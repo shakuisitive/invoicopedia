@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
 import { cn } from "@/lib/utils";
 
 // const Dashboard = () => {
@@ -188,32 +190,6 @@ import { cn } from "@/lib/utils";
 function Dashboard() {
   return (
     <div className="flex-1 p-6 bg-gray-50 overflow-y-auto">
-      <div className="max-w-[95%] my-8 mx-auto">
-        <h1 className="text-3xl font-bold mb-6">
-          Welcome to Your Invoicing App
-        </h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>About Our Invoicing Solution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              Our invoicing app streamlines your billing process, making it
-              easier than ever to manage your finances. With features like
-              automated invoicing, payment tracking, and detailed reporting,
-              you'll have more time to focus on growing your business.
-            </p>
-            <ul className="list-disc pl-5 mt-4">
-              <li>Create and send professional invoices in minutes</li>
-              <li>Track payments and manage outstanding balances</li>
-              <li>Generate detailed financial reports</li>
-              <li>Integrate with popular accounting software</li>
-              <li>Access your data securely from anywhere, anytime</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="max-w-[95%] my-8 mx-auto">
         <CardHeader>
           <CardTitle className="text-[#4dabf7]">Dashboard Overview</CardTitle>
@@ -265,6 +241,95 @@ function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-[95%] my-8 mx-auto">
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Recent Activity
+          </h3>
+          <div className="space-y-4">
+            {[1, 2, 3].map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50"
+              >
+                <div
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    i === 0
+                      ? "bg-green-500"
+                      : i === 1
+                      ? "bg-yellow-500"
+                      : "bg-[#4dabf7]"
+                  )}
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {i === 0
+                      ? "New invoice created"
+                      : i === 1
+                      ? "Payment received"
+                      : "Invoice sent"}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {i === 0
+                      ? "2 minutes ago"
+                      : i === 1
+                      ? "1 hour ago"
+                      : "3 hours ago"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <Button className="w-full bg-[#4dabf7] hover:bg-[#4dabf7]/90">
+              Create Invoice
+            </Button>
+            <Button className="w-full bg-[#4dabf7] hover:bg-[#4dabf7]/90">
+              Add Payment
+            </Button>
+            <Button className="w-full bg-[#4dabf7] hover:bg-[#4dabf7]/90">
+              New Estimate
+            </Button>
+            <Button className="w-full bg-[#4dabf7] hover:bg-[#4dabf7]/90">
+              Add Customer
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[95%] my-8 mx-auto">
+        <h1 className="text-3xl font-bold mb-6">
+          Welcome to Your Invoicing App
+        </h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>About Our Invoicing Solution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>
+              Our invoicing app streamlines your billing process, making it
+              easier than ever to manage your finances. With features like
+              automated invoicing, payment tracking, and detailed reporting,
+              you'll have more time to focus on growing your business.
+            </p>
+            <ul className="list-disc pl-5 mt-4">
+              <li>Create and send professional invoices in minutes</li>
+              <li>Track payments and manage outstanding balances</li>
+              <li>Generate detailed financial reports</li>
+              <li>Integrate with popular accounting software</li>
+              <li>Access your data securely from anywhere, anytime</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
