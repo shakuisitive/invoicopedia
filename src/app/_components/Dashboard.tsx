@@ -188,7 +188,7 @@ import { cn } from "@/lib/utils";
 function Dashboard() {
   return (
     <div className="flex-1 p-6 bg-gray-50 overflow-y-auto">
-      <div className="p-8">
+      <div className="max-w-[95%] my-8 mx-auto">
         <h1 className="text-3xl font-bold mb-6">
           Welcome to Your Invoicing App
         </h1>
@@ -214,7 +214,7 @@ function Dashboard() {
         </Card>
       </div>
 
-      <Card className="w-full">
+      <Card className="max-w-[95%] my-8 mx-auto">
         <CardHeader>
           <CardTitle className="text-[#4dabf7]">Dashboard Overview</CardTitle>
         </CardHeader>
