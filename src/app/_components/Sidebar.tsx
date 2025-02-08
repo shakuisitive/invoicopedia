@@ -69,7 +69,10 @@ function Sidebar() {
     setOpenDropdown(openDropdown === label ? null : label);
   };
   return (
-    <div className="w-64 bg-[#4dabf7] bg-opacity-10 border-r border-[#4dabf7]/20 p-4 overflow-y-auto">
+    <div
+      style={{ height: "1125px" }}
+      className="w-64 bg-[#4dabf7] bg-opacity-10 border-r border-[#4dabf7]/20 p-4 overflow-y-auto"
+    >
       <div className="flex items-center mb-8 pl-2">
         <img
           src="https://www.trafongroup.com/wp-content/uploads/2019/04/logo-placeholder.png"
@@ -93,9 +96,9 @@ function Sidebar() {
                 >
                   <div className="flex items-center">{item.label}</div>
                   {openDropdown === item.label ? (
-                    <ChevronDown size={16} />
+                    <ChevronDown size={15} />
                   ) : (
-                    <ChevronRight size={16} />
+                    <ChevronRight size={15} />
                   )}
                 </button>
 
