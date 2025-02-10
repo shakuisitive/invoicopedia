@@ -1,4 +1,3 @@
-"use client";
 import {
   Table,
   TableBody,
@@ -10,18 +9,10 @@ import {
 import type { Customer } from "./types";
 
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
 
-interface CustomerListProps {
-  customers: Customer[];
-  setCustomers: any;
-}
-
-export function CustomerList({ customers, setCustomers }: CustomerListProps) {
-  let initialCustomers = useSelector((state) => state.customers.data);
-  useEffect(() => {
-    setCustomers(initialCustomers);
-  }, []);
+export function CustomerList() {
+  let customers = useSelector((state: any) => state.customers.data);
+  console.log(customers);
   return (
     <div className="rounded-md border">
       <Table>

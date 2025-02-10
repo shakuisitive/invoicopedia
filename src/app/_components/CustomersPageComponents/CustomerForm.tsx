@@ -19,39 +19,16 @@ import { useToast } from "@/hooks/use-toast";
 
 interface CustomerFormProps {
   onAddCustomer: (customer: Customer) => void;
+  formData: any;
+  setFormData: any;
 }
 
-export function CustomerForm({ onAddCustomer }: CustomerFormProps) {
+export function CustomerForm({
+  onAddCustomer,
+  formData,
+  setFormData,
+}: CustomerFormProps) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    name: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    accountNumber: "",
-    website: "",
-    notes: "",
-    currency: "",
-    billingAddress: {
-      address1: "",
-      address2: "",
-      country: "",
-      state: "",
-      city: "",
-      postal: "",
-    },
-    shippingAddress: {
-      address1: "",
-      address2: "",
-      country: "",
-      state: "",
-      city: "",
-      postal: "",
-    },
-    shippingPhone: "",
-    deliveryInstructions: "",
-  });
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

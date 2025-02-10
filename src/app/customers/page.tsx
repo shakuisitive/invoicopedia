@@ -9,17 +9,11 @@ import { PlusIcon } from "lucide-react";
 import type { Customer } from "./types";
 import store from "../redux/store";
 import { Provider } from "react-redux";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const addCustomer = (newCustomer: Customer) => {
-    console.log(newCustomer);
-    setCustomers([...customers, newCustomer]);
-    setIsModalOpen(false);
-  };
 
   return (
     <div className="container mx-auto p-8">
@@ -31,13 +25,14 @@ export default function CustomersPage() {
         <PlusIcon className="mr-2 h-4 w-4" /> Add Customer
       </Button>
       <Provider store={store}>
-        <CustomerList setCustomers={setCustomers} customers={customers} />
+        <CustomerList />
+        <CustomerModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          setCustomers={setCustomers}
+          setIsModalOpen={setIsModalOpen}
+        />
       </Provider>
-      <CustomerModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onAddCustomer={addCustomer}
-      />
     </div>
   );
 }

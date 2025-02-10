@@ -6,20 +6,13 @@ export const customersSlice = createSlice({
     data: [],
   },
   reducers: {
-    increment: (state) => {
-      state.value += 1;
-    },
-    decrement: (state) => {
-      state.value -= 1;
-    },
-    incrementByAmount: (state, action) => {
-      state.value += action.payload;
+    addCustomer: (state: any, action: any) => {
+      state.data.push(action.payload);
+      console.log(JSON.stringify(state));
     },
   },
 });
 
-// Action creators are generated for each case reducer function
-export const { increment, decrement, incrementByAmount } =
-  customersSlice.actions;
+export const { addCustomer } = customersSlice.actions;
 
 export default customersSlice.reducer;
