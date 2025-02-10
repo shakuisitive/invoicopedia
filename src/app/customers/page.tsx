@@ -7,12 +7,16 @@ import { CustomerModal } from "../_components/CustomersPageComponents/CustomerMo
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import type { Customer } from "./types";
+import store from "../redux/store";
+import { Provider } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const addCustomer = (newCustomer: Customer) => {
+    console.log(newCustomer);
     setCustomers([...customers, newCustomer]);
     setIsModalOpen(false);
   };
@@ -26,7 +30,9 @@ export default function CustomersPage() {
       >
         <PlusIcon className="mr-2 h-4 w-4" /> Add Customer
       </Button>
-      <CustomerList customers={customers} />
+      <Provider store={store}>
+        <CustomerList setCustomers={setCustomers} customers={customers} />
+      </Provider>
       <CustomerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
