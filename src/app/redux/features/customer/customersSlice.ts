@@ -8,7 +8,6 @@ export const customersSlice = createSlice({
   reducers: {
     addCustomer: (state: any, action: any) => {
       state.data.push(action.payload);
-      console.log(JSON.stringify(state));
     },
   },
 });
