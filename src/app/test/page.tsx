@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useRef } from "react";
 import {
   ChevronDown,
@@ -12,11 +11,8 @@ import {
   Eye,
   Group,
 } from "lucide-react";
-import type {
-  Column,
-  Group as GroupType,
-  ColumnType,
-} from "../types/estimates";
+import type { Column, Group as GroupType, ColumnType } from "./types/estimates";
+
 import { ColumnTypeMenu } from "../_components/ColumnTypeMenu";
 
 const defaultColumns: Column[] = [
@@ -62,6 +58,17 @@ export default function TaskScheduler() {
     x: number;
     y: number;
   } | null>(null);
+  const [editingColumn, setEditingColumn] = useState<{
+    columnId: string;
+    value: string;
+  } | null>(null);
+  const [editingCell, setEditingCell] = useState<{
+    groupId: string;
+    taskId: string;
+    columnId: string;
+    subitemId?: string;
+    value: string;
+  } | null>(null);
 
   const draggedColumn = useRef<{
     id: string;
@@ -102,14 +109,90 @@ export default function TaskScheduler() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const addColumn = () => {
-    const newColumn: Column = {
-      id: `col-${columns.length + 1}`,
-      name: "New Column",
-      type: "text",
-      width: 150,
-    };
-    setColumns([...columns, newColumn]);
+  const handleColumnDoubleClick = (column: Column) => {
+    setEditingColumn({ columnId: column.id, value: column.name });
+  };
+
+  const handleColumnNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (editingColumn) {
+      setEditingColumn({ ...editingColumn, value: e.target.value });
+    }
+  };
+
+  const handleColumnNameSave = () => {
+    if (editingColumn) {
+      setColumns(
+        columns.map((col) =>
+          col.id === editingColumn.columnId
+            ? { ...col, name: editingColumn.value }
+            : col
+        )
+      );
+      setEditingColumn(null);
+    }
+  };
+
+  const handleCellDoubleClick = (
+    groupId: string,
+    taskId: string,
+    columnId: string,
+    value: string,
+    subitemId?: string
+  ) => {
+    setEditingCell({
+      groupId,
+      taskId,
+      columnId,
+      subitemId,
+      value: value || "", // Ensure value is never undefined
+    });
+  };
+
+  const handleCellChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (editingCell) {
+      setEditingCell({ ...editingCell, value: e.target.value });
+    }
+  };
+
+  const handleCellSave = () => {
+    if (!editingCell) return;
+
+    setGroups(
+      groups.map((group) =>
+        group.id === editingCell.groupId
+          ? {
+              ...group,
+              tasks: group.tasks.map((task) =>
+                task.id === editingCell.taskId
+                  ? editingCell.subitemId
+                    ? {
+                        ...task,
+                        subitems: (task.subitems || []).map((subitem) =>
+                          subitem.id === editingCell.subitemId
+                            ? {
+                                ...subitem,
+                                data: {
+                                  ...subitem.data,
+                                  [editingCell.columnId]: editingCell.value,
+                                },
+                              }
+                            : subitem
+                        ),
+                      }
+                    : {
+                        ...task,
+                        data: {
+                          ...task.data,
+                          [editingCell.columnId]: editingCell.value,
+                        },
+                      }
+                  : task
+              ),
+            }
+          : group
+      )
+    );
+    setEditingCell(null);
   };
 
   const toggleGroup = (groupId: string) => {
@@ -144,13 +227,39 @@ export default function TaskScheduler() {
   };
 
   const handleSelectColumnType = (type: ColumnType) => {
+    const newColumnId = `col-${columns.length + 1}`;
     const newColumn: Column = {
-      id: `col-${columns.length + 1}`,
+      id: newColumnId,
       name: "New Column",
       type,
       width: 150,
     };
+
+    // Update all tasks and subitems with the new column
+    const updatedGroups = groups.map((group) => ({
+      ...group,
+      tasks: group.tasks.map((task) => ({
+        ...task,
+        data: {
+          ...task.data,
+          [newColumnId]: "",
+        },
+        subitems: (task.subitems || []).map((subitem) => ({
+          ...subitem,
+          data: {
+            ...subitem.data,
+            [newColumnId]: "",
+          },
+        })),
+      })),
+    }));
+
     setColumns([...columns, newColumn]);
+    setGroups(updatedGroups);
+    setMenuPosition(null);
+
+    // Immediately start editing the new column name
+    setEditingColumn({ columnId: newColumnId, value: "New Column" });
   };
 
   const closeMenu = () => {
@@ -158,7 +267,7 @@ export default function TaskScheduler() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-8 rounded-xl border ">
+    <div className="min-h-screen bg-white p-8 rounded-xl border">
       <div>
         <div className="flex items-center gap-2 p-2">
           <button className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2">
@@ -214,14 +323,33 @@ export default function TaskScheduler() {
               {group.isExpanded && (
                 <>
                   <div className="flex border-y bg-gray-50">
-                    {columns.map((column, index) => (
+                    {columns.map((column) => (
                       <div
                         key={column.id}
                         className="flex items-center border-r"
                         style={{ width: column.width }}
                       >
-                        <div className="flex-1 p-2 text-sm font-medium">
-                          {column.name}
+                        <div
+                          className="flex-1 p-2 text-sm font-medium"
+                          onDoubleClick={() => handleColumnDoubleClick(column)}
+                        >
+                          {editingColumn?.columnId === column.id ? (
+                            <input
+                              type="text"
+                              value={editingColumn.value}
+                              onChange={handleColumnNameChange}
+                              onBlur={handleColumnNameSave}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleColumnNameSave();
+                                }
+                              }}
+                              className="w-full px-1 rounded border border-blue-500 focus:outline-none"
+                              autoFocus
+                            />
+                          ) : (
+                            column.name
+                          )}
                         </div>
                         <div
                           className="w-1 h-full cursor-col-resize hover:bg-blue-500"
@@ -239,7 +367,7 @@ export default function TaskScheduler() {
 
                   {group.tasks.map((task) => (
                     <div key={task.id}>
-                      <div className="flex border-b hover:bg-gray-50">
+                      <div className="flex  border-b hover:bg-gray-50">
                         {columns.map((column) => (
                           <div
                             key={column.id}
@@ -261,10 +389,35 @@ export default function TaskScheduler() {
                               )}
                               <div
                                 className="flex-1"
-                                contentEditable
-                                suppressContentEditableWarning
+                                onDoubleClick={() =>
+                                  handleCellDoubleClick(
+                                    group.id,
+                                    task.id,
+                                    column.id,
+                                    task.data[column.id]
+                                  )
+                                }
                               >
-                                {task.data[column.id]}
+                                {editingCell?.groupId === group.id &&
+                                editingCell?.taskId === task.id &&
+                                editingCell?.columnId === column.id &&
+                                !editingCell?.subitemId ? (
+                                  <input
+                                    type="text"
+                                    value={editingCell.value}
+                                    onChange={handleCellChange}
+                                    onBlur={handleCellSave}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        handleCellSave();
+                                      }
+                                    }}
+                                    className="w-full px-1 rounded border border-blue-500 focus:outline-none"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  task.data[column.id]
+                                )}
                               </div>
                             </div>
                           </div>
@@ -284,10 +437,36 @@ export default function TaskScheduler() {
                                 style={{ width: column.width }}
                               >
                                 <div
-                                  contentEditable
-                                  suppressContentEditableWarning
+                                  onDoubleClick={() =>
+                                    handleCellDoubleClick(
+                                      group.id,
+                                      task.id,
+                                      column.id,
+                                      subitem.data[column.id],
+                                      subitem.id
+                                    )
+                                  }
                                 >
-                                  {subitem.data[column.id]}
+                                  {editingCell?.groupId === group.id &&
+                                  editingCell?.taskId === task.id &&
+                                  editingCell?.columnId === column.id &&
+                                  editingCell?.subitemId === subitem.id ? (
+                                    <input
+                                      type="text"
+                                      value={editingCell.value}
+                                      onChange={handleCellChange}
+                                      onBlur={handleCellSave}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          handleCellSave();
+                                        }
+                                      }}
+                                      className="w-full px-1 rounded border border-blue-500 focus:outline-none"
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    subitem.data[column.id]
+                                  )}
                                 </div>
                               </div>
                             ))}
