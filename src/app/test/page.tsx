@@ -11,9 +11,13 @@ import {
   Eye,
   Group,
 } from "lucide-react";
-import type { Column, Group as GroupType, ColumnType } from "./types/estimates";
 
-import { ColumnTypeMenu } from "../_components/ColumnTypeMenu";
+import type {
+  Column,
+  Group as GroupType,
+  ColumnType,
+} from "@/app/types/estimates";
+import { ColumnTypeMenu } from "@/app/_components/ColumnTypeMenu";
 
 const defaultColumns: Column[] = [
   { id: "task", name: "Task", type: "text", width: 300 },
@@ -227,7 +231,7 @@ export default function TaskScheduler() {
   };
 
   const handleSelectColumnType = (type: ColumnType) => {
-    const newColumnId = `col-${columns.length + 1}`;
+    const newColumnId = `col-${Date.now()}`; // Use timestamp for unique ID
     const newColumn: Column = {
       id: newColumnId,
       name: "New Column",
@@ -235,31 +239,29 @@ export default function TaskScheduler() {
       width: 150,
     };
 
-    // Update all tasks and subitems with the new column
+    // Update all tasks and subitems with the new column, initializing with empty string
     const updatedGroups = groups.map((group) => ({
       ...group,
       tasks: group.tasks.map((task) => ({
         ...task,
         data: {
           ...task.data,
-          [newColumnId]: "",
+          [newColumnId]: "", // Initialize with empty string
         },
-        subitems: (task.subitems || []).map((subitem) => ({
-          ...subitem,
-          data: {
-            ...subitem.data,
-            [newColumnId]: "",
-          },
-        })),
+        subitems:
+          task.subitems?.map((subitem) => ({
+            ...subitem,
+            data: {
+              ...subitem.data,
+              [newColumnId]: "", // Initialize with empty string
+            },
+          })) || [],
       })),
     }));
 
     setColumns([...columns, newColumn]);
     setGroups(updatedGroups);
     setMenuPosition(null);
-
-    // Immediately start editing the new column name
-    setEditingColumn({ columnId: newColumnId, value: "New Column" });
   };
 
   const closeMenu = () => {
@@ -367,7 +369,7 @@ export default function TaskScheduler() {
 
                   {group.tasks.map((task) => (
                     <div key={task.id}>
-                      <div className="flex  border-b hover:bg-gray-50">
+                      <div className="flex border-b hover:bg-gray-50">
                         {columns.map((column) => (
                           <div
                             key={column.id}
@@ -388,13 +390,13 @@ export default function TaskScheduler() {
                                 </button>
                               )}
                               <div
-                                className="flex-1"
+                                className="flex-1 min-h-[24px] cursor-text"
                                 onDoubleClick={() =>
                                   handleCellDoubleClick(
                                     group.id,
                                     task.id,
                                     column.id,
-                                    task.data[column.id]
+                                    task.data[column.id] || ""
                                   )
                                 }
                               >
@@ -416,7 +418,7 @@ export default function TaskScheduler() {
                                     autoFocus
                                   />
                                 ) : (
-                                  task.data[column.id]
+                                  task.data[column.id] || ""
                                 )}
                               </div>
                             </div>
@@ -437,12 +439,13 @@ export default function TaskScheduler() {
                                 style={{ width: column.width }}
                               >
                                 <div
+                                  className="min-h-[24px] cursor-text"
                                   onDoubleClick={() =>
                                     handleCellDoubleClick(
                                       group.id,
                                       task.id,
                                       column.id,
-                                      subitem.data[column.id],
+                                      subitem.data[column.id] || "",
                                       subitem.id
                                     )
                                   }
@@ -465,7 +468,7 @@ export default function TaskScheduler() {
                                       autoFocus
                                     />
                                   ) : (
-                                    subitem.data[column.id]
+                                    subitem.data[column.id] || ""
                                   )}
                                 </div>
                               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ColumnType } from "../types/task";
+import type { ColumnType } from "@/app/types/estimates";
 
 interface ColumnTypeMenuProps {
   onSelect: (type: ColumnType) => void;
