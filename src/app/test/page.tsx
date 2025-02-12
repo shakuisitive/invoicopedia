@@ -505,7 +505,7 @@ export default function TaskScheduler() {
 
                       {task.isExpanded && (
                         <>
-                          <div className="flex border-y bg-gray-50/50">
+                          <div className="flex border-y bg-gray-50/50 pl-8 border-l-2 border-l-blue-200">
                             {subTaskColumns.map((column) => (
                               <div
                                 key={column.id}
@@ -556,7 +556,7 @@ export default function TaskScheduler() {
                           {task.subitems?.map((subitem) => (
                             <div
                               key={subitem.id}
-                              className="flex border-b hover:bg-gray-50 bg-gray-50/50 group"
+                              className="flex border-b hover:bg-gray-50 bg-gray-50/50 group pl-8 border-l-2 border-l-blue-200"
                             >
                               {subTaskColumns.map((column) => (
                                 <div
