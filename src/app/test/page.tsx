@@ -1,32 +1,101 @@
 "use client";
+import type React from "react";
 import { useState, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Search,
   Users,
+  Search,
   Filter,
-  ArrowUpDown,
   Eye,
-  Group,
+  Layers,
   MoreHorizontal,
-} from "lucide-react";
+} from "react-feather";
+import { ArrowUpDown } from "lucide-react";
 
-import type { Column, Group as GroupType, ColumnType } from "./types/estimates";
-import { ColumnTypeMenu } from "@/app/_components/ColumnTypeMenu";
+type ColumnType = "text" | "number" | "date" | "select";
+
+interface Column {
+  id: string;
+  name: string;
+  type: ColumnType;
+  width: number;
+}
 
 const defaultColumns: Column[] = [
-  { id: "task", name: "Task", type: "text", width: 300 },
-  { id: "status", name: "Status", type: "status", width: 150 },
-  { id: "owner", name: "Owner", type: "owner", width: 150 },
-  { id: "dueDate", name: "Due date", type: "date", width: 150 },
+  { id: "task", name: "Task", type: "text", width: 200 },
+  { id: "status", name: "Status", type: "text", width: 100 },
+  { id: "owner", name: "Owner", type: "text", width: 100 },
+  { id: "dueDate", name: "Due Date", type: "date", width: 100 },
 ];
 
+interface TaskData {
+  task: string;
+  status: string;
+  owner: string;
+  dueDate: string;
+}
+
+interface Task {
+  id: string;
+  data: TaskData;
+  isExpanded: boolean;
+  subitems?: SubTask[];
+  subtaskColumns: Column[]; // Add subtask columns to each task
+}
+
+interface SubTask {
+  id: string;
+  data: { [key: string]: string };
+}
+
+interface GroupType {
+  id: string;
+  name: string;
+  isExpanded: boolean;
+  tasks: Task[];
+  columns: Column[];
+}
+
+interface ColumnTypeMenuProps {
+  position: {
+    x: number;
+    y: number;
+    groupId: string;
+    taskId?: string;
+    isSubTask?: boolean;
+  } | null;
+  onSelect: (type: ColumnType) => void;
+  onClose: () => void;
+}
+
+const ColumnTypeMenu: React.FC<ColumnTypeMenuProps> = ({
+  position,
+  onSelect,
+  onClose,
+}) => {
+  if (!position) return null;
+
+  return (
+    <div
+      className="absolute bg-white shadow-md rounded-md border"
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
+    >
+      <div className="p-2">
+        <button onClick={() => onSelect("text")}>Text</button>
+        <button onClick={() => onSelect("number")}>Number</button>
+        <button onClick={() => onSelect("date")}>Date</button>
+        <button onClick={() => onSelect("select")}>Select</button>
+      </div>
+    </div>
+  );
+};
+
 export default function TaskScheduler() {
-  const [columns, setColumns] = useState<Column[]>(defaultColumns);
-  const [subTaskColumns, setSubTaskColumns] =
-    useState<Column[]>(defaultColumns);
   const [groups, setGroups] = useState<GroupType[]>([
     {
       id: "1",
@@ -42,6 +111,7 @@ export default function TaskScheduler() {
             dueDate: "2024-02-09",
           },
           isExpanded: true,
+          subtaskColumns: [...defaultColumns], // Initialize subtask columns for each task
           subitems: [
             {
               id: "1-1",
@@ -64,16 +134,21 @@ export default function TaskScheduler() {
           ],
         },
       ],
+      columns: [...defaultColumns],
     },
   ]);
   const [menuPosition, setMenuPosition] = useState<{
     x: number;
     y: number;
+    groupId: string;
+    taskId?: string;
     isSubTask?: boolean;
   } | null>(null);
   const [editingColumn, setEditingColumn] = useState<{
     columnId: string;
     value: string;
+    groupId: string;
+    taskId?: string;
     isSubTask?: boolean;
   } | null>(null);
   const [editingCell, setEditingCell] = useState<{
@@ -83,21 +158,30 @@ export default function TaskScheduler() {
     subitemId?: string;
     value: string;
   } | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
 
   const draggedColumn = useRef<{
     id: string;
     startX: number;
     startWidth: number;
     isSubTask?: boolean;
+    groupId: string;
+    taskId?: string;
   } | null>(null);
 
   const handleColumnResize = (
     e: React.MouseEvent,
     columnId: string,
+    groupId: string,
+    taskId?: string,
     isSubTask = false
   ) => {
-    const columnsToUse = isSubTask ? subTaskColumns : columns;
-    const column = columnsToUse.find((col) => col.id === columnId);
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    const task = isSubTask ? group.tasks.find((t) => t.id === taskId) : null;
+    const columnsToUse = isSubTask ? task?.subtaskColumns : group.columns;
+    const column = columnsToUse?.find((col) => col.id === columnId);
     if (!column) return;
 
     draggedColumn.current = {
@@ -105,6 +189,8 @@ export default function TaskScheduler() {
       startX: e.clientX,
       startWidth: column.width,
       isSubTask,
+      groupId,
+      taskId,
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -113,19 +199,35 @@ export default function TaskScheduler() {
       const diff = e.clientX - draggedColumn.current.startX;
       const newWidth = Math.max(100, draggedColumn.current.startWidth + diff);
 
-      if (draggedColumn.current.isSubTask) {
-        setSubTaskColumns(
-          subTaskColumns.map((col) =>
-            col.id === columnId ? { ...col, width: newWidth } : col
-          )
-        );
-      } else {
-        setColumns(
-          columns.map((col) =>
-            col.id === columnId ? { ...col, width: newWidth } : col
-          )
-        );
-      }
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group.id === draggedColumn.current?.groupId
+            ? {
+                ...group,
+                ...(draggedColumn.current.isSubTask
+                  ? {
+                      tasks: group.tasks.map((task) =>
+                        task.id === draggedColumn.current?.taskId
+                          ? {
+                              ...task,
+                              subtaskColumns: task.subtaskColumns.map((col) =>
+                                col.id === columnId
+                                  ? { ...col, width: newWidth }
+                                  : col
+                              ),
+                            }
+                          : task
+                      ),
+                    }
+                  : {
+                      columns: group.columns.map((col) =>
+                        col.id === columnId ? { ...col, width: newWidth } : col
+                      ),
+                    }),
+              }
+            : group
+        )
+      );
     };
 
     const handleMouseUp = () => {
@@ -138,8 +240,19 @@ export default function TaskScheduler() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const handleColumnDoubleClick = (column: Column, isSubTask = false) => {
-    setEditingColumn({ columnId: column.id, value: column.name, isSubTask });
+  const handleColumnDoubleClick = (
+    column: Column,
+    groupId: string,
+    taskId?: string,
+    isSubTask?: boolean
+  ) => {
+    setEditingColumn({
+      columnId: column.id,
+      value: column.name,
+      groupId,
+      taskId,
+      isSubTask,
+    });
   };
 
   const handleColumnNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,23 +263,37 @@ export default function TaskScheduler() {
 
   const handleColumnNameSave = () => {
     if (editingColumn) {
-      if (editingColumn.isSubTask) {
-        setSubTaskColumns(
-          subTaskColumns.map((col) =>
-            col.id === editingColumn.columnId
-              ? { ...col, name: editingColumn.value }
-              : col
-          )
-        );
-      } else {
-        setColumns(
-          columns.map((col) =>
-            col.id === editingColumn.columnId
-              ? { ...col, name: editingColumn.value }
-              : col
-          )
-        );
-      }
+      setGroups((prevGroups) =>
+        prevGroups.map((group) =>
+          group.id === editingColumn.groupId
+            ? {
+                ...group,
+                ...(editingColumn.isSubTask
+                  ? {
+                      tasks: group.tasks.map((task) =>
+                        task.id === editingColumn.taskId
+                          ? {
+                              ...task,
+                              subtaskColumns: task.subtaskColumns.map((col) =>
+                                col.id === editingColumn.columnId
+                                  ? { ...col, name: editingColumn.value }
+                                  : col
+                              ),
+                            }
+                          : task
+                      ),
+                    }
+                  : {
+                      columns: group.columns.map((col) =>
+                        col.id === editingColumn.columnId
+                          ? { ...col, name: editingColumn.value }
+                          : col
+                      ),
+                    }),
+              }
+            : group
+        )
+      );
       setEditingColumn(null);
     }
   };
@@ -261,11 +388,24 @@ export default function TaskScheduler() {
     );
   };
 
-  const handleAddColumn = (e: React.MouseEvent, isSubTask = false) => {
-    setMenuPosition({ x: e.clientX, y: e.clientY, isSubTask });
+  const handleAddColumn = (
+    e: React.MouseEvent,
+    groupId: string,
+    taskId?: string,
+    isSubTask = false
+  ) => {
+    setMenuPosition({
+      x: e.clientX,
+      y: e.clientY,
+      groupId,
+      taskId,
+      isSubTask,
+    });
   };
 
   const handleSelectColumnType = (type: ColumnType) => {
+    if (!menuPosition) return;
+
     const newColumnId = `col-${Date.now()}`;
     const newColumn: Column = {
       id: newColumnId,
@@ -274,39 +414,37 @@ export default function TaskScheduler() {
       width: 150,
     };
 
-    if (menuPosition?.isSubTask) {
-      const updatedGroups = groups.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) => ({
-          ...task,
-          subitems:
-            task.subitems?.map((subitem) => ({
-              ...subitem,
-              data: {
-                ...subitem.data,
-                [newColumnId]: "",
-              },
-            })) || [],
-        })),
-      }));
-
-      setSubTaskColumns([...subTaskColumns, newColumn]);
-      setGroups(updatedGroups);
-    } else {
-      const updatedGroups = groups.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) => ({
-          ...task,
-          data: {
-            ...task.data,
-            [newColumnId]: "",
-          },
-        })),
-      }));
-
-      setColumns([...columns, newColumn]);
-      setGroups(updatedGroups);
-    }
+    setGroups((prevGroups) =>
+      prevGroups.map((group) =>
+        group.id === menuPosition.groupId
+          ? {
+              ...group,
+              ...(menuPosition.isSubTask
+                ? {
+                    tasks: group.tasks.map((task) =>
+                      task.id === menuPosition.taskId
+                        ? {
+                            ...task,
+                            subtaskColumns: [...task.subtaskColumns, newColumn],
+                            subitems: task.subitems?.map((subitem) => ({
+                              ...subitem,
+                              data: { ...subitem.data, [newColumnId]: "" },
+                            })),
+                          }
+                        : task
+                    ),
+                  }
+                : {
+                    columns: [...group.columns, newColumn],
+                    tasks: group.tasks.map((task) => ({
+                      ...task,
+                      data: { ...task.data, [newColumnId]: "" },
+                    })),
+                  }),
+            }
+          : group
+      )
+    );
     setMenuPosition(null);
   };
 
@@ -330,7 +468,7 @@ export default function TaskScheduler() {
                         ...(task.subitems || []),
                         {
                           id: newSubtaskId,
-                          data: subTaskColumns.reduce(
+                          data: task.subtaskColumns.reduce(
                             (acc, col) => ({ ...acc, [col.id]: "" }),
                             {}
                           ),
@@ -345,13 +483,51 @@ export default function TaskScheduler() {
     );
   };
 
+  const handleAddGroup = () => {
+    const newGroupId = `group-${Date.now()}`;
+    const newGroup: GroupType = {
+      id: newGroupId,
+      name: "New Group",
+      isExpanded: true,
+      tasks: [],
+      columns: [...defaultColumns],
+    };
+    setGroups([...groups, newGroup]);
+    setEditingGroupId(newGroupId);
+  };
+
+  const handleAddTask = (groupId: string) => {
+    const newTaskId = `task-${Date.now()}`;
+    const group = groups.find((g) => g.id === groupId);
+    const newTask: Task = {
+      id: newTaskId,
+      data: (group?.columns || defaultColumns).reduce(
+        (acc, col) => ({ ...acc, [col.id]: "" }),
+        {} as TaskData
+      ),
+      isExpanded: false,
+      subitems: [],
+      subtaskColumns: [...defaultColumns], // Initialize subtask columns for new tasks
+    };
+    setGroups(
+      groups.map((group) =>
+        group.id === groupId
+          ? { ...group, tasks: [...group.tasks, newTask] }
+          : group
+      )
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white p-8 rounded-xl border">
       <div>
         <div className="flex items-center gap-2 p-2">
-          <button className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2">
-            New task
-            <ChevronDown className="w-4 h-4" />
+          <button
+            onClick={handleAddGroup}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2"
+          >
+            New Group
+            <Plus className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-4 text-gray-600">
             <div className="flex items-center gap-1">
@@ -376,7 +552,7 @@ export default function TaskScheduler() {
               <Eye className="w-4 h-4" />
             </button>
             <button className="p-1 hover:bg-gray-100 rounded flex items-center gap-1">
-              <Group className="w-4 h-4" />
+              <Layers className="w-4 h-4" />
               Group by
             </button>
           </div>
@@ -387,22 +563,58 @@ export default function TaskScheduler() {
         <div className="min-w-max">
           {groups.map((group) => (
             <div key={group.id} className="border-b">
-              <div
-                className="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer"
-                onClick={() => toggleGroup(group.id)}
-              >
-                {group.isExpanded ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
-                <span className="font-medium">{group.name}</span>
+              <div className="flex items-center justify-between gap-2 p-2 hover:bg-gray-50 cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => toggleGroup(group.id)}>
+                    {group.isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                  {editingGroupId === group.id ? (
+                    <input
+                      type="text"
+                      value={group.name}
+                      onChange={(e) => {
+                        setGroups(
+                          groups.map((g) =>
+                            g.id === group.id
+                              ? { ...g, name: e.target.value }
+                              : g
+                          )
+                        );
+                      }}
+                      onBlur={() => setEditingGroupId(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setEditingGroupId(null);
+                        }
+                      }}
+                      className="px-1 rounded border border-blue-500 focus:outline-none"
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="font-medium"
+                      onDoubleClick={() => setEditingGroupId(group.id)}
+                    >
+                      {group.name}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleAddTask(group.id)}
+                  className="bg-green-500 text-white px-2 py-1 rounded-md text-sm"
+                >
+                  Add Task
+                </button>
               </div>
 
               {group.isExpanded && (
                 <>
                   <div className="flex border-y bg-gray-50">
-                    {columns.map((column) => (
+                    {group.columns.map((column) => (
                       <div
                         key={column.id}
                         className="flex items-center border-r"
@@ -410,9 +622,12 @@ export default function TaskScheduler() {
                       >
                         <div
                           className="flex-1 p-2 text-sm font-medium"
-                          onDoubleClick={() => handleColumnDoubleClick(column)}
+                          onDoubleClick={() =>
+                            handleColumnDoubleClick(column, group.id)
+                          }
                         >
                           {editingColumn?.columnId === column.id &&
+                          editingColumn.groupId === group.id &&
                           !editingColumn.isSubTask ? (
                             <input
                               type="text"
@@ -433,12 +648,14 @@ export default function TaskScheduler() {
                         </div>
                         <div
                           className="w-1 h-full cursor-col-resize hover:bg-blue-500"
-                          onMouseDown={(e) => handleColumnResize(e, column.id)}
+                          onMouseDown={(e) =>
+                            handleColumnResize(e, column.id, group.id)
+                          }
                         />
                       </div>
                     ))}
                     <button
-                      onClick={(e) => handleAddColumn(e, false)}
+                      onClick={(e) => handleAddColumn(e, group.id)}
                       className="p-2 hover:bg-gray-200"
                     >
                       <Plus className="w-4 h-4" />
@@ -448,7 +665,7 @@ export default function TaskScheduler() {
                   {group.tasks.map((task) => (
                     <div key={task.id}>
                       <div className="flex border-b hover:bg-gray-50 group">
-                        {columns.map((column) => (
+                        {group.columns.map((column) => (
                           <div
                             key={column.id}
                             className="p-2 border-r"
@@ -515,7 +732,7 @@ export default function TaskScheduler() {
                       {task.isExpanded && (
                         <>
                           <div className="flex border-y bg-gray-50/50 pl-8 border-l-2 border-l-blue-200">
-                            {subTaskColumns.map((column) => (
+                            {task.subtaskColumns.map((column) => (
                               <div
                                 key={column.id}
                                 className="flex items-center border-r"
@@ -524,11 +741,17 @@ export default function TaskScheduler() {
                                 <div
                                   className="flex-1 p-2 text-sm font-medium"
                                   onDoubleClick={() =>
-                                    handleColumnDoubleClick(column, true)
+                                    handleColumnDoubleClick(
+                                      column,
+                                      group.id,
+                                      task.id,
+                                      true
+                                    )
                                   }
                                 >
                                   {editingColumn?.columnId === column.id &&
-                                  editingColumn.isSubTask ? (
+                                  editingColumn.isSubTask &&
+                                  editingColumn.taskId === task.id ? (
                                     <input
                                       type="text"
                                       value={editingColumn.value}
@@ -549,13 +772,21 @@ export default function TaskScheduler() {
                                 <div
                                   className="w-1 h-full cursor-col-resize hover:bg-blue-500"
                                   onMouseDown={(e) =>
-                                    handleColumnResize(e, column.id, true)
+                                    handleColumnResize(
+                                      e,
+                                      column.id,
+                                      group.id,
+                                      task.id,
+                                      true
+                                    )
                                   }
                                 />
                               </div>
                             ))}
                             <button
-                              onClick={(e) => handleAddColumn(e, true)}
+                              onClick={(e) =>
+                                handleAddColumn(e, group.id, task.id, true)
+                              }
                               className="p-2 hover:bg-gray-200"
                             >
                               <Plus className="w-4 h-4" />
@@ -567,7 +798,7 @@ export default function TaskScheduler() {
                               key={subitem.id}
                               className="flex border-b hover:bg-gray-50 bg-gray-50/50 group pl-8 border-l-2 border-l-blue-200"
                             >
-                              {subTaskColumns.map((column) => (
+                              {task.subtaskColumns.map((column) => (
                                 <div
                                   key={column.id}
                                   className="p-2 border-r relative"
