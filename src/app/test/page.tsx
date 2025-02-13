@@ -30,13 +30,13 @@ export default function TaskScheduler() {
   const [groups, setGroups] = useState<GroupType[]>([
     {
       id: "1",
-      name: "To-Do fortnite",
+      name: "School work",
       isExpanded: true,
       tasks: [
         {
           id: "1",
           data: {
-            task: "Task hello",
+            task: "Learning Math",
             status: "Stuck",
             owner: "John Doe",
             dueDate: "2024-02-09",
@@ -46,7 +46,16 @@ export default function TaskScheduler() {
             {
               id: "1-1",
               data: {
-                task: "something",
+                task: "Do Calculus",
+                status: "",
+                owner: "",
+                dueDate: "",
+              },
+            },
+            {
+              id: "1-2",
+              data: {
+                task: "Do Trig",
                 status: "",
                 owner: "",
                 dueDate: "",
