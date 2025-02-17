@@ -1,18 +1,21 @@
 "use client";
 import type React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Users,
   Search,
-  Filter,
-  Eye,
-  Layers,
   MoreHorizontal,
 } from "react-feather";
-import { ArrowUpDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 type ColumnType = "text" | "number" | "date" | "select";
 
@@ -42,7 +45,8 @@ interface Task {
   data: TaskData;
   isExpanded: boolean;
   subitems?: SubTask[];
-  subtaskColumns: Column[]; // Add subtask columns to each task
+  subtaskColumns: Column[];
+  matchesSearch?: boolean;
 }
 
 interface SubTask {
@@ -56,6 +60,7 @@ interface GroupType {
   isExpanded: boolean;
   tasks: Task[];
   columns: Column[];
+  matchesSearch?: boolean;
 }
 
 interface ColumnTypeMenuProps {
@@ -131,7 +136,7 @@ export default function TaskScheduler() {
             dueDate: "2024-02-09",
           },
           isExpanded: true,
-          subtaskColumns: [...defaultColumns], // Initialize subtask columns for each task
+          subtaskColumns: [...defaultColumns],
           subitems: [
             {
               id: "1-1",
@@ -179,6 +184,8 @@ export default function TaskScheduler() {
     value: string;
   } | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("all");
 
   const draggedColumn = useRef<{
     id: string;
@@ -528,7 +535,7 @@ export default function TaskScheduler() {
       ),
       isExpanded: false,
       subitems: [],
-      subtaskColumns: [...defaultColumns], // Initialize subtask columns for new tasks
+      subtaskColumns: [...defaultColumns],
     };
     setGroups(
       groups.map((group) =>
@@ -549,48 +556,103 @@ export default function TaskScheduler() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuPosition]);
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery) return groups;
+
+    return groups
+      .map((group) => {
+        const filteredTasks = group.tasks.map((task) => {
+          const taskMatches = Object.values(task.data).some((value) =>
+            value.toLowerCase().includes(searchQuery.toLowerCase())
+          );
+
+          const filteredSubitems = task.subitems?.filter((subitem) =>
+            Object.values(subitem.data).some((value) =>
+              value.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+          );
+
+          const subTaskMatches =
+            filteredSubitems && filteredSubitems.length > 0;
+
+          return {
+            ...task,
+            subitems:
+              searchType === "subTask" ? filteredSubitems : task.subitems,
+            matchesSearch:
+              taskMatches || (searchType === "subTask" && subTaskMatches),
+          };
+        });
+
+        const groupMatches = group.name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        const tasksMatch = filteredTasks.some((task) => task.matchesSearch);
+
+        return {
+          ...group,
+          tasks: filteredTasks.filter((task) => {
+            if (searchType === "parentTask") return task.matchesSearch;
+            if (searchType === "subTask")
+              return task.subitems && task.subitems.length > 0;
+            return true;
+          }),
+          matchesSearch: groupMatches || tasksMatch,
+        };
+      })
+      .filter((group) => {
+        if (searchType === "all") return group.matchesSearch;
+        if (searchType === "group")
+          return group.name.toLowerCase().includes(searchQuery.toLowerCase());
+        if (searchType === "parentTask")
+          return group.tasks.some((task) => task.matchesSearch);
+        if (searchType === "subTask")
+          return group.tasks.some(
+            (task) => task.subitems && task.subitems.length > 0
+          );
+        return false;
+      });
+  }, [groups, searchQuery, searchType]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-8 rounded-xl">
       <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg mb-6 shadow-sm">
-        <button
+        <Button
           onClick={handleAddGroup}
           className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors"
         >
           New Group
           <Plus className="w-4 h-4" />
-        </button>
+        </Button>
         <div className="flex items-center gap-4 text-gray-600">
+          <Select value={searchType} onValueChange={setSearchType}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Search by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="group">Group</SelectItem>
+              <SelectItem value="parentTask">Parent Task</SelectItem>
+              <SelectItem value="subTask">Sub Task</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2 bg-white rounded-md px-3 py-1 border">
             <Search className="w-4 h-4" />
             <input
               type="text"
               placeholder="Search"
               className="border-none outline-none bg-transparent"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors">
-            <Users className="w-4 h-4" />
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1">
-            <Filter className="w-4 h-4" />
-            Filter
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors">
-            <ArrowUpDown className="w-4 h-4" />
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors">
-            <Eye className="w-4 h-4" />
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1">
-            <Layers className="w-4 h-4" />
-            Group by
-          </button>
         </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <div className="min-w-max">
-          {groups.map((group) => (
+          {filteredGroups.map((group) => (
             <div key={group.id} className="border-b last:border-b-0">
               {/* Group Header */}
               <div className="flex items-center justify-between gap-2 p-4 bg-white border-b">
@@ -636,13 +698,13 @@ export default function TaskScheduler() {
                     </h2>
                   )}
                 </div>
-                <button
+                <Button
                   onClick={() => handleAddTask(group.id)}
                   className="bg-white text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   Add Task
-                </button>
+                </Button>
               </div>
 
               {group.isExpanded && (
@@ -767,145 +829,147 @@ export default function TaskScheduler() {
                       </div>
 
                       {/* Subtasks Section */}
-                      {task.isExpanded && (
-                        <div className="relative">
-                          {/* Subtask Column Headers */}
-                          <div className="flex border-y bg-gray-50/50 pl-8 border-l-4 border-l-blue-100">
-                            {task.subtaskColumns.map((column) => (
-                              <div
-                                key={column.id}
-                                className="flex items-center border-r last:border-r-0"
-                                style={{ width: column.width }}
-                              >
-                                <div
-                                  className="flex-1 p-3 text-sm font-medium text-gray-500"
-                                  onDoubleClick={() =>
-                                    handleColumnDoubleClick(
-                                      column,
-                                      group.id,
-                                      task.id,
-                                      true
-                                    )
-                                  }
-                                >
-                                  {editingColumn?.columnId === column.id &&
-                                  editingColumn.isSubTask &&
-                                  editingColumn.taskId === task.id ? (
-                                    <input
-                                      type="text"
-                                      value={editingColumn.value}
-                                      onChange={handleColumnNameChange}
-                                      onBlur={handleColumnNameSave}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          handleColumnNameSave();
-                                        }
-                                      }}
-                                      className="w-full px-1 py-1 rounded border border-blue-500 focus:outline-none"
-                                      autoFocus
-                                    />
-                                  ) : (
-                                    column.name
-                                  )}
-                                </div>
-                                <div
-                                  className="w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors"
-                                  onMouseDown={(e) =>
-                                    handleColumnResize(
-                                      e,
-                                      column.id,
-                                      group.id,
-                                      task.id,
-                                      true
-                                    )
-                                  }
-                                />
-                              </div>
-                            ))}
-                            <button
-                              onClick={(e) =>
-                                handleAddColumn(e, group.id, task.id, true)
-                              }
-                              className="p-2 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          {/* Subtask Rows */}
+                      {task.isExpanded &&
+                        task.subitems &&
+                        task.subitems.length > 0 && (
                           <div className="relative">
-                            {task.subitems?.map((subitem) => (
-                              <div
-                                key={subitem.id}
-                                className="flex border-b last:border-b-0 hover:bg-gray-50/50 group pl-8 border-l-4 border-l-blue-100 transition-colors"
-                              >
-                                {task.subtaskColumns.map((column) => (
+                            {/* Subtask Column Headers */}
+                            <div className="flex border-y bg-gray-50/50 pl-8 border-l-4 border-l-blue-100">
+                              {task.subtaskColumns.map((column) => (
+                                <div
+                                  key={column.id}
+                                  className="flex items-center border-r last:border-r-0"
+                                  style={{ width: column.width }}
+                                >
                                   <div
-                                    key={column.id}
-                                    className="p-3 border-r last:border-r-0"
-                                    style={{ width: column.width }}
+                                    className="flex-1 p-3 text-sm font-medium text-gray-500"
+                                    onDoubleClick={() =>
+                                      handleColumnDoubleClick(
+                                        column,
+                                        group.id,
+                                        task.id,
+                                        true
+                                      )
+                                    }
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className="min-h-[24px] cursor-text flex-1"
-                                        onDoubleClick={() =>
-                                          handleCellDoubleClick(
-                                            group.id,
-                                            task.id,
-                                            column.id,
-                                            subitem.data[column.id] || "",
-                                            subitem.id
-                                          )
-                                        }
-                                      >
-                                        {editingCell?.groupId === group.id &&
-                                        editingCell?.taskId === task.id &&
-                                        editingCell?.columnId === column.id &&
-                                        editingCell?.subitemId ===
-                                          subitem.id ? (
-                                          <input
-                                            type="text"
-                                            value={editingCell.value}
-                                            onChange={handleCellChange}
-                                            onBlur={handleCellSave}
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter") {
-                                                handleCellSave();
-                                              }
-                                            }}
-                                            className="w-full px-1 py-1 rounded border border-blue-500 focus:outline-none"
-                                            autoFocus
-                                          />
-                                        ) : (
-                                          <div className="text-gray-600">
-                                            {subitem.data[column.id] || ""}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
+                                    {editingColumn?.columnId === column.id &&
+                                    editingColumn.isSubTask &&
+                                    editingColumn.taskId === task.id ? (
+                                      <input
+                                        type="text"
+                                        value={editingColumn.value}
+                                        onChange={handleColumnNameChange}
+                                        onBlur={handleColumnNameSave}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            handleColumnNameSave();
+                                          }
+                                        }}
+                                        className="w-full px-1 py-1 rounded border border-blue-500 focus:outline-none"
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      column.name
+                                    )}
                                   </div>
-                                ))}
-                                <button className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-200 transition-all text-gray-500 hover:text-gray-700">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ))}
-
-                            {/* Floating Add Subtask Button */}
-                            <div className="sticky bottom-0 left-0 right-0 flex justify-center py-2 bg-gradient-to-t from-white via-white to-transparent">
+                                  <div
+                                    className="w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors"
+                                    onMouseDown={(e) =>
+                                      handleColumnResize(
+                                        e,
+                                        column.id,
+                                        group.id,
+                                        task.id,
+                                        true
+                                      )
+                                    }
+                                  />
+                                </div>
+                              ))}
                               <button
-                                onClick={() =>
-                                  handleAddSubtask(group.id, task.id)
+                                onClick={(e) =>
+                                  handleAddColumn(e, group.id, task.id, true)
                                 }
-                                className="bg-white text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-1.5 shadow-sm"
+                                className="p-2 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
                               >
                                 <Plus className="w-4 h-4" />
-                                Add Subtask
                               </button>
                             </div>
+
+                            {/* Subtask Rows */}
+                            <div className="relative">
+                              {task.subitems.map((subitem) => (
+                                <div
+                                  key={subitem.id}
+                                  className="flex border-b last:border-b-0 hover:bg-gray-50/50 group pl-8 border-l-4 border-l-blue-100 transition-colors"
+                                >
+                                  {task.subtaskColumns.map((column) => (
+                                    <div
+                                      key={column.id}
+                                      className="p-3 border-r last:border-r-0"
+                                      style={{ width: column.width }}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="min-h-[24px] cursor-text flex-1"
+                                          onDoubleClick={() =>
+                                            handleCellDoubleClick(
+                                              group.id,
+                                              task.id,
+                                              column.id,
+                                              subitem.data[column.id] || "",
+                                              subitem.id
+                                            )
+                                          }
+                                        >
+                                          {editingCell?.groupId === group.id &&
+                                          editingCell?.taskId === task.id &&
+                                          editingCell?.columnId === column.id &&
+                                          editingCell?.subitemId ===
+                                            subitem.id ? (
+                                            <input
+                                              type="text"
+                                              value={editingCell.value}
+                                              onChange={handleCellChange}
+                                              onBlur={handleCellSave}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  handleCellSave();
+                                                }
+                                              }}
+                                              className="w-full px-1 py-1 rounded border border-blue-500 focus:outline-none"
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <div className="text-gray-600">
+                                              {subitem.data[column.id] || ""}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <button className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-200 transition-all text-gray-500 hover:text-gray-700">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+
+                              {/* Floating Add Subtask Button */}
+                              <div className="sticky bottom-0 left-0 right-0 flex justify-center py-2 bg-gradient-to-t from-white via-white to-transparent">
+                                <Button
+                                  onClick={() =>
+                                    handleAddSubtask(group.id, task.id)
+                                  }
+                                  className="bg-white text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-1.5 shadow-sm"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Add Subtask
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   ))}
                 </>

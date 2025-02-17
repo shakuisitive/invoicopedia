@@ -42,7 +42,7 @@ interface Task {
   data: TaskData;
   isExpanded: boolean;
   subitems?: SubTask[];
-  subtaskColumns: Column[]; // Add subtask columns to each task
+  subtaskColumns: Column[];
 }
 
 interface SubTask {
@@ -131,7 +131,7 @@ export default function TaskScheduler() {
             dueDate: "2024-02-09",
           },
           isExpanded: true,
-          subtaskColumns: [...defaultColumns], // Initialize subtask columns for each task
+          subtaskColumns: [...defaultColumns],
           subitems: [
             {
               id: "1-1",
@@ -528,7 +528,7 @@ export default function TaskScheduler() {
       ),
       isExpanded: false,
       subitems: [],
-      subtaskColumns: [...defaultColumns], // Initialize subtask columns for new tasks
+      subtaskColumns: [...defaultColumns],
     };
     setGroups(
       groups.map((group) =>
@@ -563,15 +563,16 @@ export default function TaskScheduler() {
           <div className="flex items-center gap-2 bg-white rounded-md px-3 py-1 border">
             <Search className="w-4 h-4" />
             <input
+              onChange={(e) => alert(e.target.value)}
               type="text"
               placeholder="Search"
               className="border-none outline-none bg-transparent"
             />
           </div>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors">
+          {/* <button className="p-2 hover:bg-gray-200 rounded transition-colors">
             <Users className="w-4 h-4" />
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1">
+          </button> */}
+          {/* <button className="p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1">
             <Filter className="w-4 h-4" />
             Filter
           </button>
@@ -584,7 +585,7 @@ export default function TaskScheduler() {
           <button className="p-2 hover:bg-gray-200 rounded transition-colors flex items-center gap-1">
             <Layers className="w-4 h-4" />
             Group by
-          </button>
+          </button> */}
         </div>
       </div>
 
