@@ -1,0 +1,103 @@
+#app {
+  font-family: "Arial", sans-serif;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+#inspire {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.elevation-1 {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.toolbar {
+  background-color: #ffffff;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+th,
+td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+}
+
+tr:hover {
+  background-color: #f1f1f1;
+  transition: background-color 0.2s ease;
+}
+
+.my-2 {
+  margin: 16px 0;
+}
+
+.elevation-2 {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: white;
+  margin: 16px;
+  padding: 16px;
+}
+
+.expanded-row {
+  background-color: #fafafa;
+}
+
+.expanded-row td {
+  padding: 0;
+}
+
+.nested-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.nested-table th,
+.nested-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.nested-table th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+}
+
+.nested-table tr:hover {
+  background-color: #f1f1f1;
+  transition: background-color 0.2s ease;
+}
