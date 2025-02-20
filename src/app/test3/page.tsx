@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useRef, useMemo } from "react";
 import {
+  ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  MoreHorizontal,
   Plus,
   Search,
-  MoreHorizontal,
-  ArrowUpDown,
   User,
 } from "lucide-react";
 
@@ -121,6 +121,43 @@ const TaskScheduler: React.FC = () => {
     columnId: string;
   } | null>(null);
 
+  const [resizingColumn, setResizingColumn] = useState(false);
+
+  const handleColumnResizeStart = (
+    e: React.MouseEvent,
+    column: Column,
+    isSubtask: boolean
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(true);
+
+    const startX = e.pageX;
+    const startWidth = column.width;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const diff = e.pageX - startX;
+      const newWidth = Math.max(startWidth + diff, 60);
+
+      const setColumns = isSubtask ? setSubtaskColumns : setParentColumns;
+
+      setColumns((prevColumns) =>
+        prevColumns.map((col) =>
+          col.id === column.id ? { ...col, width: newWidth } : col
+        )
+      );
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      setResizingColumn(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
   const toggleExpand = (taskId: string) => {
     setExpanded((prev) =>
       prev.includes(taskId)
@@ -153,7 +190,6 @@ const TaskScheduler: React.FC = () => {
 
     if (isSubtask) {
       setSubtaskColumns([...subtaskColumns, newColumn]);
-      // Initialize the new column for all subtasks
       setTasks(
         tasks.map((task) => ({
           ...task,
@@ -165,7 +201,6 @@ const TaskScheduler: React.FC = () => {
       );
     } else {
       setParentColumns([...parentColumns, newColumn]);
-      // Initialize the new column for all tasks
       setTasks(
         tasks.map((task) => ({
           ...task,
@@ -181,6 +216,7 @@ const TaskScheduler: React.FC = () => {
     isSubtask: boolean
   ) => {
     const setColumns = isSubtask ? setSubtaskColumns : setParentColumns;
+    const columns = isSubtask ? subtaskColumns : parentColumns;
     const newValue = newTitle.toLowerCase().replace(/\s+/g, "-");
 
     setColumns((prevColumns) =>
@@ -195,14 +231,13 @@ const TaskScheduler: React.FC = () => {
       )
     );
 
-    // Update all tasks/subtasks with the new column value
     if (isSubtask) {
       setTasks(
         tasks.map((task) => ({
           ...task,
           subitems: task.subitems.map((subtask) => {
             const {
-              [prevColumns.find((col) => col.id === columnId)?.value || ""]:
+              [columns.find((col) => col.id === columnId)?.value || ""]:
                 oldValue,
               ...rest
             } = subtask;
@@ -217,8 +252,7 @@ const TaskScheduler: React.FC = () => {
       setTasks(
         tasks.map((task) => {
           const {
-            [prevColumns.find((col) => col.id === columnId)?.value || ""]:
-              oldValue,
+            [columns.find((col) => col.id === columnId)?.value || ""]: oldValue,
             ...rest
           } = task;
           return {
@@ -423,7 +457,6 @@ const TaskScheduler: React.FC = () => {
       subitems: [],
     };
 
-    // Initialize all custom columns
     parentColumns.forEach((column) => {
       if (!["name", "person", "status", "date"].includes(column.value)) {
         newTask[column.value] = "";
@@ -442,7 +475,6 @@ const TaskScheduler: React.FC = () => {
       date: new Date().toLocaleDateString(),
     };
 
-    // Initialize all custom columns
     subtaskColumns.forEach((column) => {
       if (!["subitem", "owner", "status", "date"].includes(column.value)) {
         newSubtask[column.value] = "";
@@ -553,297 +585,334 @@ const TaskScheduler: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm border border-gray-200">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="w-8 px-4 py-2"></th>
-              {parentColumns.map((column) => (
-                <th
-                  key={column.id}
-                  className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200"
-                  style={{ width: column.width }}
-                  draggable
-                  onDragStart={() => handleColumnDragStart(column)}
-                  onDragOver={(e) => handleColumnDragOver(e, column)}
-                  onDrop={() => handleColumnDrop(false)}
-                >
-                  <div className="flex items-center justify-between">
-                    {addingColumn?.columnId === column.id ? (
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder="Type column name"
-                        value={column.text}
-                        onChange={(e) =>
-                          handleColumnTitleEdit(
-                            column.id,
-                            e.target.value,
-                            false
-                          )
-                        }
-                        onBlur={() => setAddingColumn(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") setAddingColumn(null);
-                        }}
-                        className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
-                      />
-                    ) : (
-                      <span>{column.text}</span>
-                    )}
-                    <ArrowUpDown className="w-4 h-4 text-gray-400" />
-                  </div>
-                </th>
-              ))}
-              <th className="w-8 px-4 py-2">
-                <button
-                  onClick={() => addNewColumn(false)}
-                  className="p-1 hover:bg-gray-200 rounded"
-                >
-                  <Plus className="w-4 h-4 text-gray-400" />
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTasks.map((task, index) => (
-              <React.Fragment key={task.id}>
-                <tr
-                  className={`${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  } hover:bg-gray-100 ${
-                    expanded.includes(task.id)
-                      ? "border-l-4 border-blue-500"
-                      : ""
-                  }`}
-                  draggable
-                  onDragStart={(e) => handleTaskDragStart(e, task.id)}
-                  onDragOver={handleTaskDragOver}
-                  onDrop={(e) => handleTaskDrop(e, task.id)}
-                >
-                  <td className="px-4 py-2">
-                    <button
-                      onClick={() => toggleExpand(task.id)}
-                      className="p-1 hover:bg-gray-200 rounded"
-                    >
-                      {expanded.includes(task.id) ? (
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-500" />
-                      )}
-                    </button>
-                  </td>
-                  {parentColumns.map((column, colIndex) => (
-                    <td
-                      key={column.id}
-                      className={
-                        colIndex === 0
-                          ? "px-4 py-2 border-x border-gray-200 text-left"
-                          : "px-4 py-2 border-x border-gray-200 text-center"
+        <div>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="w-8 px-4 py-2"></th>
+                {parentColumns.map((column) => (
+                  <th
+                    key={column.id}
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200 relative"
+                    style={{ width: column.width }}
+                  >
+                    <div
+                      className="flex items-center justify-between"
+                      draggable={!resizingColumn}
+                      onDragStart={() =>
+                        !resizingColumn && handleColumnDragStart(column)
                       }
-                      onDoubleClick={() =>
-                        handleCellDoubleClick(
-                          task.id,
-                          column.id,
-                          (task[column.value] as string) || ""
-                        )
+                      onDragOver={(e) =>
+                        !resizingColumn && handleColumnDragOver(e, column)
                       }
+                      onDrop={() => !resizingColumn && handleColumnDrop(false)}
                     >
-                      {editingCell?.taskId === task.id &&
-                      editingCell?.columnId === column.id &&
-                      !editingCell?.subtaskId ? (
+                      {addingColumn?.columnId === column.id ? (
                         <input
                           type="text"
-                          value={editingCell.value}
-                          onChange={handleCellChange}
-                          onBlur={handleCellSave}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleCellSave();
-                          }}
-                          className="w-full px-2 py-1 border rounded"
                           autoFocus
+                          placeholder="Type column name"
+                          value={column.text}
+                          onChange={(e) =>
+                            handleColumnTitleEdit(
+                              column.id,
+                              e.target.value,
+                              false
+                            )
+                          }
+                          onBlur={() => setAddingColumn(null)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") setAddingColumn(null);
+                          }}
+                          className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
                         />
-                      ) : column.id === "status" ? (
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                            (task[column.value] as string) || ""
-                          )}`}
-                        >
-                          {task[column.value] || ""}
-                        </span>
-                      ) : column.id === "person" ? (
-                        <div className="flex items-center">
-                          <User className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{task[column.value] || ""}</span>
-                        </div>
                       ) : (
-                        task[column.value] || ""
+                        <span>{column.text}</span>
                       )}
+                      <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div
+                      className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
+                      onMouseDown={(e) =>
+                        handleColumnResizeStart(e, column, false)
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </th>
+                ))}
+                <th className="w-8 px-4 py-2">
+                  <button
+                    onClick={() => addNewColumn(false)}
+                    className="p-1 hover:bg-gray-200 rounded"
+                  >
+                    <Plus className="w-4 h-4 text-gray-400" />
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.map((task, index) => (
+                <React.Fragment key={task.id}>
+                  <tr
+                    className={`${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    } hover:bg-gray-100 ${
+                      expanded.includes(task.id)
+                        ? "border-l-4 border-blue-500"
+                        : ""
+                    }`}
+                    draggable
+                    onDragStart={(e) => handleTaskDragStart(e, task.id)}
+                    onDragOver={handleTaskDragOver}
+                    onDrop={(e) => handleTaskDrop(e, task.id)}
+                  >
+                    <td className="px-4 py-2">
+                      <button
+                        onClick={() => toggleExpand(task.id)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        {expanded.includes(task.id) ? (
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-500" />
+                        )}
+                      </button>
                     </td>
-                  ))}
-                  <td className="px-4 py-2">
-                    <button className="p-1 hover:bg-gray-200 rounded">
-                      <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                    </button>
-                  </td>
-                </tr>
-                {expanded.includes(task.id) && (
-                  <tr>
-                    <td colSpan={parentColumns.length + 2}>
-                      <div className="pl-8 pr-4 py-4 bg-gray-100 border-t border-b border-gray-200">
-                        <div className="border-l-4 border-blue-500 pl-4">
-                          <table className="w-full">
-                            <thead>
-                              <tr>
-                                {subtaskColumns.map((column) => (
-                                  <th
-                                    key={column.id}
-                                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200"
-                                    style={{ width: column.width }}
-                                    draggable
-                                    onDragStart={() =>
-                                      handleColumnDragStart(column)
-                                    }
-                                    onDragOver={(e) =>
-                                      handleColumnDragOver(e, column)
-                                    }
-                                    onDrop={() => handleColumnDrop(true)}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      {addingColumn?.columnId === column.id ? (
-                                        <input
-                                          type="text"
-                                          autoFocus
-                                          placeholder="Type column name"
-                                          value={column.text}
-                                          onChange={(e) =>
-                                            handleColumnTitleEdit(
-                                              column.id,
-                                              e.target.value,
-                                              true
-                                            )
-                                          }
-                                          onBlur={() => setAddingColumn(null)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter")
-                                              setAddingColumn(null);
-                                          }}
-                                          className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
-                                        />
-                                      ) : (
-                                        <span>{column.text}</span>
-                                      )}
-                                      <ArrowUpDown className="w-4 h-4 text-gray-400" />
-                                    </div>
-                                  </th>
-                                ))}
-                                <th className="w-8 px-4 py-2">
-                                  <button
-                                    onClick={() => addNewColumn(true)}
-                                    className="p-1 hover:bg-gray-200 rounded"
-                                  >
-                                    <Plus className="w-4 h-4 text-gray-400" />
-                                  </button>
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {task.subitems.map((subtask, subIndex) => (
-                                <tr
-                                  key={subtask.id}
-                                  className={`${
-                                    subIndex % 2 === 0
-                                      ? "bg-white"
-                                      : "bg-gray-200"
-                                  } hover:bg-gray-300`}
-                                  draggable
-                                  onDragStart={(e) =>
-                                    handleSubtaskDragStart(
-                                      e,
-                                      task.id,
-                                      subtask.id
-                                    )
-                                  }
-                                  onDragOver={handleTaskDragOver}
-                                  onDrop={(e) =>
-                                    handleSubtaskDrop(e, task.id, subtask.id)
-                                  }
-                                >
-                                  {subtaskColumns.map((column, colIndex) => (
-                                    <td
-                                      key={column.id}
-                                      className={
-                                        colIndex === 0
-                                          ? "px-4 py-2 border-x border-gray-200 text-left"
-                                          : "px-4 py-2 border-x border-gray-200 text-center"
-                                      }
-                                      onDoubleClick={() =>
-                                        handleCellDoubleClick(
-                                          task.id,
-                                          column.id,
-                                          subtask[column.value] || "",
-                                          subtask.id
-                                        )
-                                      }
-                                    >
-                                      {editingCell?.taskId === task.id &&
-                                      editingCell?.columnId === column.id &&
-                                      editingCell?.subtaskId === subtask.id ? (
-                                        <input
-                                          type="text"
-                                          value={editingCell.value}
-                                          onChange={handleCellChange}
-                                          onBlur={handleCellSave}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter")
-                                              handleCellSave();
-                                          }}
-                                          className="w-full px-2 py-1 border rounded"
-                                          autoFocus
-                                        />
-                                      ) : column.id === "status" ? (
-                                        <span
-                                          className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                                            subtask[column.value] || ""
-                                          )}`}
-                                        >
-                                          {subtask[column.value] || ""}
-                                        </span>
-                                      ) : column.id === "owner" ? (
-                                        <div className="flex items-center">
-                                          <User className="w-4 h-4 mr-2 text-gray-400" />
-                                          <span>
-                                            {subtask[column.value] || ""}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        subtask[column.value] || ""
-                                      )}
-                                    </td>
-                                  ))}
-                                  <td className="px-4 py-2">
-                                    <button className="p-1 hover:bg-gray-200 rounded">
-                                      <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <button
-                            onClick={() => addNewSubtask(task.id)}
-                            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    {parentColumns.map((column, colIndex) => (
+                      <td
+                        key={column.id}
+                        className={
+                          colIndex === 0
+                            ? "px-4 py-2 border-x border-gray-200 text-left"
+                            : "px-4 py-2 border-x border-gray-200 text-center"
+                        }
+                        style={{ width: column.width }}
+                        onDoubleClick={() =>
+                          handleCellDoubleClick(
+                            task.id,
+                            column.id,
+                            (task[column.value] as string) || ""
+                          )
+                        }
+                      >
+                        {editingCell?.taskId === task.id &&
+                        editingCell?.columnId === column.id &&
+                        !editingCell?.subtaskId ? (
+                          <input
+                            type="text"
+                            value={editingCell.value}
+                            onChange={handleCellChange}
+                            onBlur={handleCellSave}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleCellSave();
+                            }}
+                            className="w-full px-2 py-1 border rounded"
+                            autoFocus
+                          />
+                        ) : column.id === "status" ? (
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
+                              (task[column.value] as string) || ""
+                            )}`}
                           >
-                            Add Subtask
-                          </button>
-                        </div>
-                      </div>
+                            {task[column.value] || ""}
+                          </span>
+                        ) : column.id === "person" ? (
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{task[column.value] || ""}</span>
+                          </div>
+                        ) : (
+                          task[column.value] || ""
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-4 py-2">
+                      <button className="p-1 hover:bg-gray-200 rounded">
+                        <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                      </button>
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  {expanded.includes(task.id) && (
+                    <tr>
+                      <td colSpan={parentColumns.length + 2}>
+                        <div className="pl-8 pr-4 py-4 bg-gray-100 border-t border-b border-gray-200">
+                          <div className="border-l-4 border-blue-500 pl-4">
+                            <table className="w-full">
+                              <thead>
+                                <tr>
+                                  {subtaskColumns.map((column) => (
+                                    <th
+                                      key={column.id}
+                                      className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200 relative"
+                                      style={{ width: column.width }}
+                                    >
+                                      <div
+                                        className="flex items-center justify-between"
+                                        draggable={!resizingColumn}
+                                        onDragStart={() =>
+                                          !resizingColumn &&
+                                          handleColumnDragStart(column)
+                                        }
+                                        onDragOver={(e) =>
+                                          !resizingColumn &&
+                                          handleColumnDragOver(e, column)
+                                        }
+                                        onDrop={() =>
+                                          !resizingColumn &&
+                                          handleColumnDrop(true)
+                                        }
+                                      >
+                                        {addingColumn?.columnId ===
+                                        column.id ? (
+                                          <input
+                                            type="text"
+                                            autoFocus
+                                            placeholder="Type column name"
+                                            value={column.text}
+                                            onChange={(e) =>
+                                              handleColumnTitleEdit(
+                                                column.id,
+                                                e.target.value,
+                                                true
+                                              )
+                                            }
+                                            onBlur={() => setAddingColumn(null)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                setAddingColumn(null);
+                                            }}
+                                            className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
+                                          />
+                                        ) : (
+                                          <span>{column.text}</span>
+                                        )}
+                                        <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                                      </div>
+                                      <div
+                                        className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
+                                        onMouseDown={(e) =>
+                                          handleColumnResizeStart(
+                                            e,
+                                            column,
+                                            true
+                                          )
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </th>
+                                  ))}
+                                  <th className="w-8 px-4 py-2">
+                                    <button
+                                      onClick={() => addNewColumn(true)}
+                                      className="p-1 hover:bg-gray-200 rounded"
+                                    >
+                                      <Plus className="w-4 h-4 text-gray-400" />
+                                    </button>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {task.subitems.map((subtask, subIndex) => (
+                                  <tr
+                                    key={subtask.id}
+                                    className={`${
+                                      subIndex % 2 === 0
+                                        ? "bg-white"
+                                        : "bg-gray-200"
+                                    } hover:bg-gray-300`}
+                                    draggable
+                                    onDragStart={(e) =>
+                                      handleSubtaskDragStart(
+                                        e,
+                                        task.id,
+                                        subtask.id
+                                      )
+                                    }
+                                    onDragOver={handleTaskDragOver}
+                                    onDrop={(e) =>
+                                      handleSubtaskDrop(e, task.id, subtask.id)
+                                    }
+                                  >
+                                    {subtaskColumns.map((column, colIndex) => (
+                                      <td
+                                        key={column.id}
+                                        className={
+                                          colIndex === 0
+                                            ? "px-4 py-2 border-x border-gray-200 text-left"
+                                            : "px-4 py-2 border-x border-gray-200 text-center"
+                                        }
+                                        style={{ width: column.width }}
+                                        onDoubleClick={() =>
+                                          handleCellDoubleClick(
+                                            task.id,
+                                            column.id,
+                                            subtask[column.value] || "",
+                                            subtask.id
+                                          )
+                                        }
+                                      >
+                                        {editingCell?.taskId === task.id &&
+                                        editingCell?.columnId === column.id &&
+                                        editingCell?.subtaskId ===
+                                          subtask.id ? (
+                                          <input
+                                            type="text"
+                                            value={editingCell.value}
+                                            onChange={handleCellChange}
+                                            onBlur={handleCellSave}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                handleCellSave();
+                                            }}
+                                            className="w-full px-2 py-1 border rounded"
+                                            autoFocus
+                                          />
+                                        ) : column.id === "status" ? (
+                                          <span
+                                            className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
+                                              subtask[column.value] || ""
+                                            )}`}
+                                          >
+                                            {subtask[column.value] || ""}
+                                          </span>
+                                        ) : column.id === "owner" ? (
+                                          <div className="flex items-center">
+                                            <User className="w-4 h-4 mr-2 text-gray-400" />
+                                            <span>
+                                              {subtask[column.value] || ""}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          subtask[column.value] || ""
+                                        )}
+                                      </td>
+                                    ))}
+                                    <td className="px-4 py-2">
+                                      <button className="p-1 hover:bg-gray-200 rounded">
+                                        <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <button
+                              onClick={() => addNewSubtask(task.id)}
+                              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                              Add Subtask
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
