@@ -552,7 +552,7 @@ const TaskScheduler: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm border border-gray-200">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50">
@@ -560,7 +560,7 @@ const TaskScheduler: React.FC = () => {
               {parentColumns.map((column) => (
                 <th
                   key={column.id}
-                  className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200"
                   style={{ width: column.width }}
                   draggable
                   onDragStart={() => handleColumnDragStart(column)}
@@ -632,10 +632,14 @@ const TaskScheduler: React.FC = () => {
                       )}
                     </button>
                   </td>
-                  {parentColumns.map((column) => (
+                  {parentColumns.map((column, colIndex) => (
                     <td
                       key={column.id}
-                      className="px-4 py-2"
+                      className={
+                        colIndex === 0
+                          ? "px-4 py-2 border-x border-gray-200 text-left"
+                          : "px-4 py-2 border-x border-gray-200 text-center"
+                      }
                       onDoubleClick={() =>
                         handleCellDoubleClick(
                           task.id,
@@ -693,7 +697,7 @@ const TaskScheduler: React.FC = () => {
                                 {subtaskColumns.map((column) => (
                                   <th
                                     key={column.id}
-                                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200"
                                     style={{ width: column.width }}
                                     draggable
                                     onDragStart={() =>
@@ -764,10 +768,14 @@ const TaskScheduler: React.FC = () => {
                                     handleSubtaskDrop(e, task.id, subtask.id)
                                   }
                                 >
-                                  {subtaskColumns.map((column) => (
+                                  {subtaskColumns.map((column, colIndex) => (
                                     <td
                                       key={column.id}
-                                      className="px-4 py-2"
+                                      className={
+                                        colIndex === 0
+                                          ? "px-4 py-2 border-x border-gray-200 text-left"
+                                          : "px-4 py-2 border-x border-gray-200 text-center"
+                                      }
                                       onDoubleClick={() =>
                                         handleCellDoubleClick(
                                           task.id,
