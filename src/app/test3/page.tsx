@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useRef, useMemo } from "react";
 import {
   ChevronDown,
@@ -154,8 +153,25 @@ const TaskScheduler: React.FC = () => {
 
     if (isSubtask) {
       setSubtaskColumns([...subtaskColumns, newColumn]);
+      // Initialize the new column for all subtasks
+      setTasks(
+        tasks.map((task) => ({
+          ...task,
+          subitems: task.subitems.map((subtask) => ({
+            ...subtask,
+            [newColumn.value]: "",
+          })),
+        }))
+      );
     } else {
       setParentColumns([...parentColumns, newColumn]);
+      // Initialize the new column for all tasks
+      setTasks(
+        tasks.map((task) => ({
+          ...task,
+          [newColumn.value]: "",
+        }))
+      );
     }
   };
 
@@ -165,17 +181,54 @@ const TaskScheduler: React.FC = () => {
     isSubtask: boolean
   ) => {
     const setColumns = isSubtask ? setSubtaskColumns : setParentColumns;
+    const newValue = newTitle.toLowerCase().replace(/\s+/g, "-");
+
     setColumns((prevColumns) =>
       prevColumns.map((col) =>
         col.id === columnId
           ? {
               ...col,
               text: newTitle,
-              value: newTitle.toLowerCase().replace(/\s+/g, "-"),
+              value: newValue,
             }
           : col
       )
     );
+
+    // Update all tasks/subtasks with the new column value
+    if (isSubtask) {
+      setTasks(
+        tasks.map((task) => ({
+          ...task,
+          subitems: task.subitems.map((subtask) => {
+            const {
+              [prevColumns.find((col) => col.id === columnId)?.value || ""]:
+                oldValue,
+              ...rest
+            } = subtask;
+            return {
+              ...rest,
+              [newValue]: oldValue || "",
+            };
+          }),
+        }))
+      );
+    } else {
+      setTasks(
+        tasks.map((task) => {
+          const {
+            [prevColumns.find((col) => col.id === columnId)?.value || ""]:
+              oldValue,
+            ...rest
+          } = task;
+          return {
+            ...rest,
+            [newValue]: oldValue || "",
+            subitems: task.subitems,
+          };
+        })
+      );
+    }
   };
 
   const handleCellDoubleClick = (
@@ -196,33 +249,36 @@ const TaskScheduler: React.FC = () => {
   const handleCellSave = () => {
     if (!editingCell) return;
 
+    const { taskId, columnId, subtaskId, value } = editingCell;
+    const column = subtaskId
+      ? subtaskColumns.find((col) => col.id === columnId)
+      : parentColumns.find((col) => col.id === columnId);
+
+    if (!column) return;
+
     setTasks((prevTasks) =>
       prevTasks.map((task) => {
-        if (task.id === editingCell.taskId) {
-          if (editingCell.subtaskId) {
+        if (task.id === taskId) {
+          if (subtaskId) {
             return {
               ...task,
               subitems: task.subitems.map((subtask) =>
-                subtask.id === editingCell.subtaskId
-                  ? { ...subtask, [editingCell.columnId]: editingCell.value }
+                subtask.id === subtaskId
+                  ? { ...subtask, [column.value]: value }
                   : subtask
               ),
             };
           } else {
-            const updatedTask = {
+            return {
               ...task,
-              [editingCell.columnId]: editingCell.value,
+              [column.value]: value,
             };
-            updatedTask.subitems = updatedTask.subitems.map((subtask) => ({
-              ...subtask,
-              [editingCell.columnId]: subtask[editingCell.columnId] || "",
-            }));
-            return updatedTask;
           }
         }
         return task;
       })
     );
+
     setEditingCell(null);
   };
 
@@ -366,6 +422,14 @@ const TaskScheduler: React.FC = () => {
       date: new Date().toLocaleDateString(),
       subitems: [],
     };
+
+    // Initialize all custom columns
+    parentColumns.forEach((column) => {
+      if (!["name", "person", "status", "date"].includes(column.value)) {
+        newTask[column.value] = "";
+      }
+    });
+
     setTasks([...tasks, newTask]);
   };
 
@@ -377,6 +441,14 @@ const TaskScheduler: React.FC = () => {
       status: "Not Started",
       date: new Date().toLocaleDateString(),
     };
+
+    // Initialize all custom columns
+    subtaskColumns.forEach((column) => {
+      if (!["subitem", "owner", "status", "date"].includes(column.value)) {
+        newSubtask[column.value] = "";
+      }
+    });
+
     setTasks(
       tasks.map((task) =>
         task.id === taskId
@@ -395,6 +467,14 @@ const TaskScheduler: React.FC = () => {
       date: new Date().toLocaleDateString(),
       subitems: [],
     };
+
+    // Initialize all custom columns
+    parentColumns.forEach((column) => {
+      if (!["name", "person", "status", "date"].includes(column.value)) {
+        newGroup[column.value] = "";
+      }
+    });
+
     setTasks([...tasks, newGroup]);
     setExpanded([...expanded, newGroup.id]);
   };
