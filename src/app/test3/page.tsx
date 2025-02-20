@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   ArrowUpDown,
   ChevronDown,
@@ -106,6 +106,11 @@ const TaskScheduler: React.FC = () => {
     value: string;
   } | null>(null);
 
+  const [editingColumn, setEditingColumn] = useState<{
+    columnId: string;
+    isSubtask: boolean;
+  } | null>(null);
+
   const [draggedColumn, setDraggedColumn] = useState<Column | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<Column | null>(null);
 
@@ -208,6 +213,9 @@ const TaskScheduler: React.FC = () => {
         }))
       );
     }
+
+    // Set editing state for the new column
+    setEditingColumn({ columnId: newColumn.id, isSubtask });
   };
 
   const handleColumnTitleEdit = (
@@ -500,7 +508,6 @@ const TaskScheduler: React.FC = () => {
       subitems: [],
     };
 
-    // Initialize all custom columns
     parentColumns.forEach((column) => {
       if (!["name", "person", "status", "date"].includes(column.value)) {
         newGroup[column.value] = "";
@@ -541,6 +548,43 @@ const TaskScheduler: React.FC = () => {
       }
     });
   }, [searchQuery, searchType, tasks]);
+
+  const handleColumnDoubleClick = (columnId: string, isSubtask: boolean) => {
+    setEditingColumn({ columnId, isSubtask });
+  };
+
+  const handleColumnNameChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    columnId: string,
+    isSubtask: boolean
+  ) => {
+    const setColumns = isSubtask ? setSubtaskColumns : setParentColumns;
+    setColumns((prevColumns) =>
+      prevColumns.map((col) =>
+        col.id === columnId ? { ...col, text: e.target.value } : col
+      )
+    );
+  };
+
+  const handleColumnNameSave = (columnId: string, isSubtask: boolean) => {
+    const columns = isSubtask ? subtaskColumns : parentColumns;
+    const column = columns.find((col) => col.id === columnId);
+    if (column) {
+      handleColumnTitleEdit(columnId, column.text, isSubtask);
+    }
+    setEditingColumn(null);
+  };
+
+  useEffect(() => {
+    if (editingColumn) {
+      const input = document.getElementById(
+        `column-input-${editingColumn.columnId}`
+      );
+      if (input) {
+        (input as HTMLInputElement).focus();
+      }
+    }
+  }, [editingColumn]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 rounded-xl">
@@ -606,23 +650,23 @@ const TaskScheduler: React.FC = () => {
                         !resizingColumn && handleColumnDragOver(e, column)
                       }
                       onDrop={() => !resizingColumn && handleColumnDrop(false)}
+                      onDoubleClick={() =>
+                        handleColumnDoubleClick(column.id, false)
+                      }
                     >
-                      {addingColumn?.columnId === column.id ? (
+                      {editingColumn?.columnId === column.id &&
+                      !editingColumn.isSubtask ? (
                         <input
+                          id={`column-input-${column.id}`}
                           type="text"
-                          autoFocus
-                          placeholder="Type column name"
                           value={column.text}
                           onChange={(e) =>
-                            handleColumnTitleEdit(
-                              column.id,
-                              e.target.value,
-                              false
-                            )
+                            handleColumnNameChange(e, column.id, false)
                           }
-                          onBlur={() => setAddingColumn(null)}
+                          onBlur={() => handleColumnNameSave(column.id, false)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") setAddingColumn(null);
+                            if (e.key === "Enter")
+                              handleColumnNameSave(column.id, false);
                           }}
                           className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
                         />
@@ -762,27 +806,41 @@ const TaskScheduler: React.FC = () => {
                                           !resizingColumn &&
                                           handleColumnDrop(true)
                                         }
+                                        onDoubleClick={() =>
+                                          handleColumnDoubleClick(
+                                            column.id,
+                                            true
+                                          )
+                                        }
                                       >
-                                        {addingColumn?.columnId ===
-                                        column.id ? (
+                                        {editingColumn?.columnId ===
+                                          column.id &&
+                                        editingColumn.isSubtask ? (
                                           <input
                                             type="text"
-                                            autoFocus
-                                            placeholder="Type column name"
                                             value={column.text}
                                             onChange={(e) =>
-                                              handleColumnTitleEdit(
+                                              handleColumnNameChange(
+                                                e,
                                                 column.id,
-                                                e.target.value,
                                                 true
                                               )
                                             }
-                                            onBlur={() => setAddingColumn(null)}
+                                            onBlur={() =>
+                                              handleColumnNameSave(
+                                                column.id,
+                                                true
+                                              )
+                                            }
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter")
-                                                setAddingColumn(null);
+                                                handleColumnNameSave(
+                                                  column.id,
+                                                  true
+                                                );
                                             }}
                                             className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
+                                            autoFocus
                                           />
                                         ) : (
                                           <span>{column.text}</span>
