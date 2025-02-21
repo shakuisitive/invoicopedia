@@ -4,11 +4,15 @@ import * as React from "react";
 import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 
+// Add new type definitions
+type ColumnType = 'status' | 'text' | 'people' | 'number' | 'date';
+
 interface Column {
   id: string;
   text: string;
   value: string;
   width: number;
+  type: ColumnType;  // Add type field
 }
 
 interface SubTask {
@@ -29,6 +33,117 @@ interface Task {
   subitems: SubTask[];
   [key: string]: string | SubTask[];
 }
+
+// Add predefined options
+const STATUS_OPTIONS = [
+  { label: 'Done', value: 'done', color: 'bg-emerald-500' },
+  { label: 'Working on it', value: 'working', color: 'bg-amber-400' },
+  { label: 'Stuck', value: 'stuck', color: 'bg-red-500' }
+];
+
+const PEOPLE_OPTIONS = [
+  { label: 'John Doe', value: 'john' },
+  { label: 'Jane Smith', value: 'jane' },
+  { label: 'Bob Johnson', value: 'bob' }
+];
+
+// Add column type menu component with improved styling
+const ColumnTypeMenu: React.FC<{
+  onSelect: (type: ColumnType) => void;
+  onClose: () => void;
+  position: { x: number; y: number };
+}> = ({ onSelect, onClose, position }) => {
+  return (
+    <div 
+      className="fixed z-50 bg-white rounded-lg shadow-xl border w-[280px]"
+      style={{ 
+        top: `${position.y}px`, 
+        left: `${position.x}px` 
+      }}
+    >
+      <div className="p-2">
+        <div className="px-3 py-2 text-sm font-medium text-gray-600">
+          Add Column
+        </div>
+        <input
+          type="text"
+          placeholder="Search..."
+          className="w-full px-3 py-1.5 mb-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="text-xs font-medium text-gray-500 px-3 py-1.5">
+          Essentials
+        </div>
+        <div className="space-y-1">
+          <button
+            onClick={() => onSelect('status')}
+            className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
+          >
+            <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center group-hover:bg-emerald-200">
+              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+            </div>
+            <span className="text-sm text-gray-700">Status</span>
+          </button>
+          
+          <button
+            onClick={() => onSelect('text')}
+            className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
+          >
+            <div className="w-6 h-6 bg-amber-100 rounded flex items-center justify-center group-hover:bg-amber-200">
+              <div className="w-3 h-3 text-amber-500">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/>
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm text-gray-700">Text</span>
+          </button>
+
+          <button
+            onClick={() => onSelect('people')}
+            className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
+          >
+            <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center group-hover:bg-blue-200">
+              <div className="w-3 h-3 text-blue-500">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm text-gray-700">People</span>
+          </button>
+
+          <button
+            onClick={() => onSelect('number')}
+            className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
+          >
+            <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center group-hover:bg-purple-200">
+              <div className="w-3 h-3 text-purple-500">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8c0 1.11-.9 2-2 2h-2v2h4v2H9v-4c0-1.11.9-2 2-2h2V9H9V7h4c1.1 0 2 .89 2 2v2z"/>
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm text-gray-700">Numbers</span>
+          </button>
+
+          <button
+            onClick={() => onSelect('date')}
+            className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
+          >
+            <div className="w-6 h-6 bg-rose-100 rounded flex items-center justify-center group-hover:bg-rose-200">
+              <div className="w-3 h-3 text-rose-500">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm text-gray-700">Date</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EditableText: React.FC<{
   text: string;
@@ -93,18 +208,18 @@ const EditableText: React.FC<{
 const TaskScheduler: React.FC = () => {
   const [expanded, setExpanded] = useState<string[]>([]);
   const [parentColumns, setParentColumns] = useState<Column[]>([
-    { id: "checkbox", text: "", value: "checkbox", width: 40 },
-    { id: "name", text: "Item", value: "name", width: 300 },
-    { id: "person", text: "Person", value: "person", width: 150 },
-    { id: "status", text: "Status", value: "status", width: 150 },
-    { id: "date", text: "Date", value: "date", width: 100 },
+    { id: "checkbox", text: "", value: "checkbox", width: 40, type: 'text' },
+    { id: "name", text: "Item", value: "name", width: 300, type: 'text' },
+    { id: "person", text: "Person", value: "person", width: 150, type: 'people' },
+    { id: "status", text: "Status", value: "status", width: 150, type: 'status' },
+    { id: "date", text: "Date", value: "date", width: 100, type: 'date' },
   ]);
   const [subtaskColumns, setSubtaskColumns] = useState<Column[]>([
-    { id: "checkbox", text: "", value: "checkbox", width: 40 },
-    { id: "subitem", text: "Subitem", value: "subitem", width: 300 },
-    { id: "owner", text: "Owner", value: "owner", width: 150 },
-    { id: "status", text: "Status", value: "status", width: 150 },
-    { id: "date", text: "Date", value: "date", width: 100 },
+    { id: "checkbox", text: "", value: "checkbox", width: 40, type: 'text' },
+    { id: "subitem", text: "Subitem", value: "subitem", width: 300, type: 'text' },
+    { id: "owner", text: "Owner", value: "owner", width: 150, type: 'people' },
+    { id: "status", text: "Status", value: "status", width: 150, type: 'status' },
+    { id: "date", text: "Date", value: "date", width: 100, type: 'date' },
   ]);
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -197,6 +312,11 @@ const TaskScheduler: React.FC = () => {
 
   const [newTaskInput, setNewTaskInput] = useState<string | null>(null);
 
+  const [showColumnTypeMenu, setShowColumnTypeMenu] = useState<{
+    isSubtask: boolean;
+    position: { x: number; y: number };
+  } | null>(null);
+
   const handleColumnMouseEnter = (columnId: string) => {
     setHoveringColumn(columnId);
   };
@@ -248,16 +368,13 @@ const TaskScheduler: React.FC = () => {
     );
   };
 
-  const addNewColumn = (isSubtask: boolean, taskId?: string) => {
-    // Clear any existing editing states
-    setEditingCell(null);
-    setEditingColumn(null);
-
+  const addNewColumn = (type: ColumnType, isSubtask: boolean) => {
     const newColumn: Column = {
       id: `col-${Date.now()}`,
       text: "",
       value: `new-column-${Date.now()}`,
       width: 150,
+      type: type
     };
 
     if (isSubtask) {
@@ -267,7 +384,7 @@ const TaskScheduler: React.FC = () => {
           ...task,
           subitems: task.subitems.map((subtask) => ({
             ...subtask,
-            [newColumn.value]: "",
+            [newColumn.value]: type === 'status' ? 'working' : '',
           })),
         }))
       );
@@ -276,13 +393,13 @@ const TaskScheduler: React.FC = () => {
       setTasks((prevTasks) =>
         prevTasks.map((task) => ({
           ...task,
-          [newColumn.value]: "",
+          [newColumn.value]: type === 'status' ? 'working' : '',
         }))
       );
     }
 
-    // Set editing state immediately
-    setEditingColumn({ columnId: newColumn.id, isSubtask, taskId });
+    setEditingColumn({ columnId: newColumn.id, isSubtask });
+    setShowColumnTypeMenu(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -809,6 +926,90 @@ const TaskScheduler: React.FC = () => {
     setEditingCell(null);
   };
 
+  // Add cell renderer function
+  const renderCell = (column: Column, value: string, onSave: (newValue: string) => void) => {
+    switch (column.type) {
+      case 'status':
+        return (
+          <select
+            value={value || 'working'}
+            onChange={(e) => onSave(e.target.value)}
+            className={`px-2 py-1 rounded text-xs text-white ${
+              getStatusColor(value || 'working')
+            }`}
+          >
+            {STATUS_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+      
+      case 'people':
+        return (
+          <select
+            value={value}
+            onChange={(e) => onSave(e.target.value)}
+            className="px-2 py-1 rounded border border-gray-200"
+          >
+            <option value="">Select person...</option>
+            {PEOPLE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => {
+              if (!isNaN(Number(e.target.value))) {
+                onSave(e.target.value);
+              }
+            }}
+            className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
+          />
+        );
+
+      case 'date':
+        return (
+          <input
+            type="date"
+            value={value}
+            onChange={(e) => onSave(e.target.value)}
+            className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
+          />
+        );
+
+      default:
+        return (
+          <EditableText
+            text={value}
+            onSave={onSave}
+          />
+        );
+    }
+  };
+
+  // Modify the column add button click handler
+  const handleAddColumnClick = (e: React.MouseEvent, isSubtask: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setShowColumnTypeMenu({
+      isSubtask,
+      position: { 
+        x: Math.max(rect.left - 290, 10), // 290px is menu width + small buffer, 10px minimum from left edge
+        y: rect.bottom 
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       {/* Top toolbar remains the same */}
@@ -925,10 +1126,11 @@ const TaskScheduler: React.FC = () => {
                 ))}
                 <th className="w-[40px] px-4 py-2 border border-gray-200 bg-gray-50/50">
                   <button
-                    onClick={() => addNewColumn(false)}
-                    className="h-6 w-6 p-1 rounded-md hover:bg-gray-100 transition-colors"
+                    onClick={(e) => handleAddColumnClick(e, false)}
+                    className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
+                    title="Add new column"
                   >
-                    <Plus className="h-4 h-4 text-gray-400" />
+                    <Plus className="w-4 h-4 text-gray-400" />
                   </button>
                 </th>
               </tr>
@@ -983,12 +1185,9 @@ const TaskScheduler: React.FC = () => {
                                 <Plus className="w-4 h-4 text-gray-500" />
                               </button>
                             )}
-                            <EditableText
-                              text={String(task[column.value] || "")}
-                              onSave={(newValue) =>
-                                handleCellSave(task.id, column.id, newValue)
-                              }
-                            />
+                            {renderCell(column, String(task[column.value] || ""), (newValue) =>
+                              handleCellSave(task.id, column.id, newValue)
+                            )}
                           </div>
                         ) : column.id === "status" ? (
                           <span
@@ -999,12 +1198,9 @@ const TaskScheduler: React.FC = () => {
                             {String(task[column.value] || "")}
                           </span>
                         ) : (
-                          <EditableText
-                            text={String(task[column.value] || "")}
-                            onSave={(newValue) =>
-                              handleCellSave(task.id, column.id, newValue)
-                            }
-                          />
+                          renderCell(column, String(task[column.value] || ""), (newValue) =>
+                            handleCellSave(task.id, column.id, newValue)
+                          )
                         )}
                       </td>
                     ))}
@@ -1137,9 +1333,7 @@ const TaskScheduler: React.FC = () => {
                                   ))}
                                   <th className="w-8 px-4 py-2 border border-gray-200">
                                     <button
-                                      onClick={() =>
-                                        addNewColumn(true, task.id)
-                                      }
+                                      onClick={(e) => handleAddColumnClick(e, true)}
                                       className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
                                       title="Add new column"
                                     >
@@ -1241,28 +1435,13 @@ const TaskScheduler: React.FC = () => {
                                             }}
                                             className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
                                           />
-                                        ) : column.id === "status" ? (
-                                          <span
-                                            className={`px-2 py-1 rounded text-xs ${getStatusColor(
-                                              subtask[column.value] || ""
-                                            )}`}
-                                          >
-                                            {subtask[column.value] || ""}
-                                          </span>
-                                        ) : (
-                                          <EditableText
-                                            text={String(
-                                              subtask[column.value] || ""
-                                            )}
-                                            onSave={(newValue) =>
-                                              handleCellSave(
-                                                task.id,
-                                                column.id,
-                                                newValue,
-                                                subtask.id
-                                              )
-                                            }
-                                          />
+                                        ) : renderCell(column, String(subtask[column.value] || ""), (newValue) =>
+                                          handleCellSave(
+                                            task.id,
+                                            column.id,
+                                            newValue,
+                                            subtask.id
+                                          )
                                         )}
                                       </td>
                                     ))}
@@ -1409,6 +1588,20 @@ const TaskScheduler: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {showColumnTypeMenu && (
+        <>
+          <div 
+            className="fixed inset-0" 
+            onClick={() => setShowColumnTypeMenu(null)}
+          />
+          <ColumnTypeMenu
+            onSelect={(type) => addNewColumn(type, showColumnTypeMenu.isSubtask)}
+            onClose={() => setShowColumnTypeMenu(null)}
+            position={showColumnTypeMenu.position}
+          />
+        </>
+      )}
     </div>
   );
 };
