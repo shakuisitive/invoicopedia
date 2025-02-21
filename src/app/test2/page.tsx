@@ -1,15 +1,16 @@
 "use client";
-import React, { useState, useRef, useMemo, useEffect } from "react";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  ChevronRight,
-  MoreHorizontal,
-  Plus,
-  Search,
-  User,
-  PlusCircle,
-} from "lucide-react";
+
+import { useEffect } from "react";
+
+import { useMemo } from "react";
+
+import { useRef } from "react";
+
+import { useState } from "react";
+
+import * as React from "react";
+import { ArrowUpDown, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 
 interface Column {
   id: string;
@@ -105,6 +106,7 @@ const TaskScheduler: React.FC = () => {
   const [editingColumn, setEditingColumn] = useState<{
     columnId: string;
     isSubtask: boolean;
+    taskId?: string;
   } | null>(null);
 
   const [draggedColumn, setDraggedColumn] = useState<Column | null>(null);
@@ -134,6 +136,12 @@ const TaskScheduler: React.FC = () => {
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
 
   const [newChildTaskId, setNewChildTaskId] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("all");
+
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [draggedSubtaskId, setDraggedSubtaskId] = useState<string | null>(null);
 
   const handleColumnMouseEnter = (columnId: string) => {
     setHoveringColumn(columnId);
@@ -186,32 +194,22 @@ const TaskScheduler: React.FC = () => {
     );
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "in progress":
-      case "working on it":
-        return "bg-orange-400 text-white";
-      case "completed":
-      case "done":
-        return "bg-green-500 text-white";
-      default:
-        return "bg-gray-200 text-gray-600";
-    }
-  };
+  const addNewColumn = (isSubtask: boolean, taskId?: string) => {
+    // Clear any existing editing states
+    setEditingCell(null);
+    setEditingColumn(null);
 
-  const addNewColumn = (isSubtask: boolean) => {
     const newColumn: Column = {
       id: `col-${Date.now()}`,
       text: "",
       value: `new-column-${Date.now()}`,
       width: 150,
     };
-    setAddingColumn({ isSubtask, columnId: newColumn.id });
 
     if (isSubtask) {
-      setSubtaskColumns([...subtaskColumns, newColumn]);
-      setTasks(
-        tasks.map((task) => ({
+      setSubtaskColumns((prev) => [...prev, newColumn]);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => ({
           ...task,
           subitems: task.subitems.map((subtask) => ({
             ...subtask,
@@ -220,16 +218,44 @@ const TaskScheduler: React.FC = () => {
         }))
       );
     } else {
-      setParentColumns([...parentColumns, newColumn]);
-      setTasks(
-        tasks.map((task) => ({
+      setParentColumns((prev) => [...prev, newColumn]);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => ({
           ...task,
           [newColumn.value]: "",
         }))
       );
     }
 
-    setEditingColumn({ columnId: newColumn.id, isSubtask });
+    // Set editing state immediately
+    setEditingColumn({ columnId: newColumn.id, isSubtask, taskId });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "working on it":
+        return "bg-amber-400 text-white";
+      case "stuck":
+        return "bg-red-500 text-white";
+      case "done":
+        return "bg-emerald-500 text-white";
+      default:
+        return "bg-gray-200 text-gray-600";
+    }
+  };
+
+  const getTaskRowClass = (isExpanded: boolean, index: number) => {
+    return `group relative ${
+      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+    } hover:bg-gray-100 transition-colors ${
+      isExpanded ? "border-l-[3px] border-blue-500" : ""
+    }`;
+  };
+
+  const getSubtaskRowClass = (index: number) => {
+    return `group relative ${
+      index % 2 === 0 ? "bg-white/50" : "bg-gray-50/50"
+    } hover:bg-gray-100/50 transition-colors`;
   };
 
   const handleColumnTitleEdit = (
@@ -293,6 +319,8 @@ const TaskScheduler: React.FC = () => {
     value: string,
     subtaskId?: string
   ) => {
+    // Clear any existing column editing state
+    setEditingColumn(null);
     setEditingCell({ taskId, columnId, subtaskId, value: value || "" });
   };
 
@@ -373,11 +401,15 @@ const TaskScheduler: React.FC = () => {
     e: React.DragEvent<HTMLDivElement>,
     taskId: string
   ) => {
+    setDraggedTaskId(taskId);
     draggedTask.current = { id: taskId, startY: e.clientY };
+    e.currentTarget.classList.add("opacity-50");
   };
 
   const handleTaskDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    const tr = e.currentTarget as HTMLTableRowElement;
+    tr.classList.add("bg-gray-100");
   };
 
   const handleTaskDrop = (
@@ -386,8 +418,16 @@ const TaskScheduler: React.FC = () => {
   ) => {
     if (!draggedTask.current) return;
 
-    const { id: draggedId, startY } = draggedTask.current;
-    const endY = e.clientY;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { id: draggedId } = draggedTask.current;
+
+    // Remove drag styling
+    document
+      .querySelectorAll("tr")
+      .forEach((row) => row.classList.remove("opacity-50"));
+    setDraggedTaskId(null);
 
     setTasks((prevTasks) => {
       const draggedIndex = prevTasks.findIndex((task) => task.id === draggedId);
@@ -397,12 +437,7 @@ const TaskScheduler: React.FC = () => {
 
       const newTasks = [...prevTasks];
       const [draggedTask] = newTasks.splice(draggedIndex, 1);
-
-      if (endY < startY) {
-        newTasks.splice(targetIndex, 0, draggedTask);
-      } else {
-        newTasks.splice(targetIndex + 1, 0, draggedTask);
-      }
+      newTasks.splice(targetIndex, 0, draggedTask);
 
       return newTasks;
     });
@@ -415,7 +450,9 @@ const TaskScheduler: React.FC = () => {
     taskId: string,
     subtaskId: string
   ) => {
+    setDraggedSubtaskId(subtaskId);
     draggedSubtask.current = { taskId, subtaskId, startY: e.clientY };
+    e.currentTarget.classList.add("opacity-50");
   };
 
   const handleSubtaskDrop = (
@@ -425,44 +462,63 @@ const TaskScheduler: React.FC = () => {
   ) => {
     if (!draggedSubtask.current) return;
 
-    const {
-      taskId: draggedTaskId,
-      subtaskId: draggedSubtaskId,
-      startY,
-    } = draggedSubtask.current;
-    const endY = e.clientY;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Remove drag styling
+    document
+      .querySelectorAll("tr")
+      .forEach((row) => row.classList.remove("opacity-50"));
+    setDraggedSubtaskId(null);
+
+    const { taskId: draggedTaskId, subtaskId: draggedSubtaskId } =
+      draggedSubtask.current;
 
     setTasks((prevTasks) => {
       return prevTasks.map((task) => {
+        // If this is the source task, remove the dragged subtask
         if (task.id === draggedTaskId) {
           const draggedIndex = task.subitems.findIndex(
             (subtask) => subtask.id === draggedSubtaskId
           );
-          const [draggedSubtask] = task.subitems.splice(draggedIndex, 1);
+          const draggedSubtask = task.subitems[draggedIndex];
 
+          // If moving within the same task
           if (task.id === targetTaskId) {
             const targetIndex = task.subitems.findIndex(
               (subtask) => subtask.id === targetSubtaskId
             );
-            if (endY < startY) {
-              task.subitems.splice(targetIndex, 0, draggedSubtask);
-            } else {
-              task.subitems.splice(targetIndex + 1, 0, draggedSubtask);
-            }
-          } else {
-            const targetTask = prevTasks.find((t) => t.id === targetTaskId);
-            if (targetTask) {
-              const targetIndex = targetTask.subitems.findIndex(
-                (subtask) => subtask.id === targetSubtaskId
-              );
-              if (endY < startY) {
-                targetTask.subitems.splice(targetIndex, 0, draggedSubtask);
-              } else {
-                targetTask.subitems.splice(targetIndex + 1, 0, draggedSubtask);
-              }
-            }
+            const newSubitems = [...task.subitems];
+            newSubitems.splice(draggedIndex, 1);
+            newSubitems.splice(targetIndex, 0, draggedSubtask);
+            return { ...task, subitems: newSubitems };
+          }
+
+          // If moving to a different task, remove from current task
+          return {
+            ...task,
+            subitems: task.subitems.filter(
+              (subtask) => subtask.id !== draggedSubtaskId
+            ),
+          };
+        }
+
+        // If this is the target task, add the dragged subtask
+        if (task.id === targetTaskId && draggedTaskId !== targetTaskId) {
+          const targetIndex = task.subitems.findIndex(
+            (subtask) => subtask.id === targetSubtaskId
+          );
+          const draggedSubtask = prevTasks
+            .find((t) => t.id === draggedTaskId)
+            ?.subitems.find((s) => s.id === draggedSubtaskId);
+
+          if (draggedSubtask) {
+            const newSubitems = [...task.subitems];
+            newSubitems.splice(targetIndex, 0, draggedSubtask);
+            return { ...task, subitems: newSubitems };
           }
         }
+
         return task;
       });
     });
@@ -470,10 +526,15 @@ const TaskScheduler: React.FC = () => {
     draggedSubtask.current = null;
   };
 
+  const handleTaskDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    const tr = e.currentTarget as HTMLTableRowElement;
+    tr.classList.remove("bg-gray-100");
+  };
+
   const addNewTask = () => {
     const newTask: Task = {
       id: `task-${Date.now()}`,
-      name: "New Task",
+      name: "",
       person: "",
       status: "Not Started",
       date: new Date().toLocaleDateString(),
@@ -487,6 +548,15 @@ const TaskScheduler: React.FC = () => {
     });
 
     setTasks([...tasks, newTask]);
+
+    // Set editing state immediately
+    setTimeout(() => {
+      setEditingCell({
+        taskId: newTask.id,
+        columnId: "name",
+        value: "",
+      });
+    }, 50);
   };
 
   const addNewSubtask = (taskId: string) => {
@@ -543,9 +613,6 @@ const TaskScheduler: React.FC = () => {
     setExpanded([...expanded, newGroup.id]);
   };
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState("all");
-
   const filteredTasks = useMemo(() => {
     if (!searchQuery) return tasks;
 
@@ -575,6 +642,7 @@ const TaskScheduler: React.FC = () => {
   }, [searchQuery, searchType, tasks]);
 
   const handleColumnDoubleClick = (columnId: string, isSubtask: boolean) => {
+    setEditingCell(null);
     setEditingColumn({ columnId, isSubtask });
   };
 
@@ -598,6 +666,10 @@ const TaskScheduler: React.FC = () => {
       handleColumnTitleEdit(columnId, column.text, isSubtask);
     }
     setEditingColumn(null);
+    // Ensure focus is removed from the input
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   };
 
   const toggleTaskSelection = (taskId: string) => {
@@ -639,10 +711,14 @@ const TaskScheduler: React.FC = () => {
   useEffect(() => {
     if (editingColumn) {
       const input = document.getElementById(
-        `column-input-${editingColumn.columnId}`
+        `column-input-${editingColumn.columnId}${
+          editingColumn.taskId ? `-${editingColumn.taskId}` : ""
+        }`
       );
       if (input) {
-        (input as HTMLInputElement).focus();
+        setTimeout(() => {
+          (input as HTMLInputElement).focus();
+        }, 0);
       }
     }
   }, [editingColumn]);
@@ -657,40 +733,41 @@ const TaskScheduler: React.FC = () => {
   }, [newChildTaskId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 rounded-xl">
+    <div className="min-h-screen bg-gray-50 p-8">
+      {/* Top toolbar remains the same */}
       <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg mb-6 shadow-sm">
         <div className="flex gap-2">
           <button
             onClick={addNewTask}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors"
+            className="px-3 py-1.5 hover:bg-gray-100 rounded flex items-center gap-2 text-gray-600 border border-dashed"
           >
-            Add New Task
             <Plus className="w-4 h-4" />
+            New Task
           </button>
           <button
             onClick={addNewGroup}
-            className="bg-green-500 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-green-600 transition-colors"
+            className="px-3 py-1.5 hover:bg-gray-100 rounded flex items-center gap-2 text-gray-600 border border-dashed"
           >
-            Add New Group
             <Plus className="w-4 h-4" />
+            New Group
           </button>
         </div>
-        <div className="flex items-center gap-4 text-gray-600">
+        <div className="flex items-center gap-4">
           <select
             value={searchType}
             onChange={(e) => setSearchType(e.target.value)}
-            className="border border-gray-300 rounded-md px-2 py-1"
+            className="border border-gray-200 rounded px-2 py-1.5 text-sm bg-transparent"
           >
             <option value="all">All</option>
-            <option value="parentTask">Parent Task</option>
-            <option value="subTask">Sub Task</option>
+            <option value="parentTask">Parent Tasks</option>
+            <option value="subTask">Subtasks</option>
           </select>
-          <div className="flex items-center gap-2 bg-white rounded-md px-3 py-1 border">
-            <Search className="w-4 h-4" />
+          <div className="flex items-center gap-2 bg-white rounded px-3 py-1.5 border border-gray-200">
+            <Search className="w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search"
-              className="border-none outline-none bg-transparent"
+              placeholder="Search tasks..."
+              className="border-none outline-none bg-transparent text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -698,41 +775,39 @@ const TaskScheduler: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm border border-gray-200">
-        <div>
-          <table className="w-full">
+      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="w-8 px-4 py-2">
+              <tr>
+                <th className="w-[40px] px-4 py-2 border border-gray-200 bg-gray-50/50">
                   <input
                     type="checkbox"
                     checked={selectedTasks.length === tasks.length}
                     onChange={toggleAllTasks}
-                    className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
                   />
                 </th>
                 {parentColumns.slice(1).map((column) => (
                   <th
                     key={column.id}
-                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200 relative"
+                    className="group relative border border-gray-200 bg-gray-50/50"
                     style={{ width: column.width }}
                     onMouseEnter={() => handleColumnMouseEnter(column.id)}
                     onMouseLeave={handleColumnMouseLeave}
+                    draggable={!resizingColumn}
+                    onDragStart={() =>
+                      !resizingColumn && handleColumnDragStart(column)
+                    }
+                    onDragOver={(e) =>
+                      !resizingColumn && handleColumnDragOver(e, column)
+                    }
+                    onDrop={() => !resizingColumn && handleColumnDrop(false)}
+                    onDoubleClick={() =>
+                      handleColumnDoubleClick(column.id, false)
+                    }
                   >
-                    <div
-                      className="flex items-center justify-between"
-                      draggable={!resizingColumn}
-                      onDragStart={() =>
-                        !resizingColumn && handleColumnDragStart(column)
-                      }
-                      onDragOver={(e) =>
-                        !resizingColumn && handleColumnDragOver(e, column)
-                      }
-                      onDrop={() => !resizingColumn && handleColumnDrop(false)}
-                      onDoubleClick={() =>
-                        handleColumnDoubleClick(column.id, false)
-                      }
-                    >
+                    <div className="flex items-center justify-between px-4 py-2">
                       {editingColumn?.columnId === column.id &&
                       !editingColumn.isSubtask ? (
                         <input
@@ -747,16 +822,20 @@ const TaskScheduler: React.FC = () => {
                             if (e.key === "Enter")
                               handleColumnNameSave(column.id, false);
                           }}
-                          className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
+                          className="w-full rounded border-none bg-transparent px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ) : (
-                        <span>{column.text}</span>
+                        <>
+                          <span className="text-xs font-medium uppercase text-gray-500">
+                            {column.text}
+                          </span>
+                          <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                        </>
                       )}
-                      <ArrowUpDown className="w-4 h-4 text-gray-400" />
                     </div>
                     {hoveringColumn === column.id && (
                       <div
-                        className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
+                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
                         onMouseDown={(e) =>
                           handleColumnResizeStart(e, column, false)
                         }
@@ -765,65 +844,110 @@ const TaskScheduler: React.FC = () => {
                     )}
                   </th>
                 ))}
-                <th className="w-8 px-4 py-2">
+                <th className="w-[40px] px-4 py-2 border border-gray-200 bg-gray-50/50">
                   <button
                     onClick={() => addNewColumn(false)}
-                    className="p-1 hover:bg-gray-200 rounded"
+                    className="h-6 w-6 p-1 rounded-md hover:bg-gray-100 transition-colors"
                   >
-                    <Plus className="w-4 h-4 text-gray-400" />
+                    <Plus className="h-4 h-4 text-gray-400" />
                   </button>
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y">
               {filteredTasks.map((task, index) => (
                 <React.Fragment key={task.id}>
                   <tr
-                    className={`${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } hover:bg-gray-100 ${
-                      expanded.includes(task.id)
-                        ? "border-l-4 border-blue-500"
-                        : ""
-                    }`}
+                    className={
+                      index % 2 === 0
+                        ? "bg-white hover:bg-gray-100"
+                        : "bg-gray-50 hover:bg-gray-100"
+                    }
                     draggable
                     onDragStart={(e) => handleTaskDragStart(e, task.id)}
                     onDragOver={handleTaskDragOver}
                     onDrop={(e) => handleTaskDrop(e, task.id)}
-                    onMouseEnter={() => setHoveredTask(task.id)}
-                    onMouseLeave={() => setHoveredTask(null)}
+                    onDragLeave={handleTaskDragLeave}
                   >
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 border border-gray-200">
                       <input
                         type="checkbox"
                         checked={selectedTasks.includes(task.id)}
                         onChange={() => toggleTaskSelection(task.id)}
-                        className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
                       />
                     </td>
-                    {parentColumns.slice(1).map((column, colIndex) => (
+                    {parentColumns.slice(1).map((column) => (
                       <td
                         key={column.id}
-                        className={
-                          colIndex === 0
-                            ? "px-4 py-2 border-x border-gray-200 text-left"
-                            : "px-4 py-2 border-x border-gray-200 text-center"
-                        }
+                        className="px-4 py-2 border border-gray-200"
                         style={{ width: column.width }}
                         onDoubleClick={() =>
                           handleCellDoubleClick(
                             task.id,
                             column.id,
-                            (task[column.value] as string) || ""
+                            task[column.value] || ""
                           )
                         }
                       >
-                        {editingCell?.taskId === task.id &&
-                        editingCell?.columnId === column.id &&
-                        !editingCell?.subtaskId ? (
+                        {column.id === "name" ? (
+                          <div className="flex items-center gap-2">
+                            {task.subitems.length > 0 ? (
+                              <button
+                                onClick={() => toggleExpand(task.id)}
+                                className="p-1 hover:bg-gray-100 rounded"
+                              >
+                                {expanded.includes(task.id) ? (
+                                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => addNewSubtask(task.id)}
+                                className="p-1 hover:bg-gray-100 rounded opacity-50 hover:opacity-100"
+                              >
+                                <Plus className="w-4 h-4 text-gray-500" />
+                              </button>
+                            )}
+                            {editingCell?.taskId === task.id &&
+                            editingCell?.columnId === column.id ? (
+                              <input
+                                type="text"
+                                value={editingCell.value}
+                                onChange={handleCellChange}
+                                onBlur={handleCellSave}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleCellSave();
+                                }}
+                                className="w-full px-2 py-1 border rounded"
+                                autoFocus
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>{task[column.value] || ""}</span>
+                                {task.subitems.length > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-gray-100 rounded text-xs text-gray-600">
+                                    {task.subitems.length}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : column.id === "status" ? (
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${getStatusColor(
+                              task[column.value] || ""
+                            )}`}
+                          >
+                            {task[column.value] || ""}
+                          </span>
+                        ) : editingCell?.taskId === task.id &&
+                          editingCell?.columnId === column.id ? (
                           <input
                             type="text"
-                            value={editingCell?.value ?? ""}
+                            value={editingCell.value}
                             onChange={handleCellChange}
                             onBlur={handleCellSave}
                             onKeyDown={(e) => {
@@ -832,68 +956,27 @@ const TaskScheduler: React.FC = () => {
                             className="w-full px-2 py-1 border rounded"
                             autoFocus
                           />
-                        ) : column.id === "status" ? (
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                              (task[column.value] as string) || ""
-                            )}`}
-                          >
-                            {task[column.value] || ""}
-                          </span>
-                        ) : column.id === "person" ? (
-                          <div className="flex items-center">
-                            <User className="w-4 h-4 mr-2 text-gray-400" />
-                            <span>{task[column.value] || ""}</span>
-                          </div>
-                        ) : column.id === "name" ? (
-                          <div className="flex items-center gap-2">
-                            {task.subitems.length > 0 && (
-                              <button
-                                onClick={() => toggleExpand(task.id)}
-                                className="p-1 hover:bg-gray-200 rounded"
-                              >
-                                {expanded.includes(task.id) ? (
-                                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4 text-gray-500" />
-                                )}
-                              </button>
-                            )}
-                            <span>{task[column.value] || ""}</span>
-                            <div className="relative group ml-auto">
-                              <PlusCircle
-                                className={`w-4 h-4 text-gray-400 ${
-                                  task.subitems.length === 0
-                                    ? "opacity-50"
-                                    : "opacity-0"
-                                } group-hover:opacity-100 transition-opacity cursor-pointer`}
-                                onClick={() => addNewSubtask(task.id)}
-                              />
-                              <span className="absolute left-0 top-full mt-1 w-24 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                Add child task
-                              </span>
-                            </div>
-                          </div>
                         ) : (
                           task[column.value] || ""
                         )}
                       </td>
                     ))}
-                    <td className="px-4 py-2">
-                      <button className="p-1 hover:bg-gray-200 rounded">
+                    <td className="px-4 py-2 border border-gray-200">
+                      <button className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100">
                         <MoreHorizontal className="w-4 h-4 text-gray-400" />
                       </button>
                     </td>
                   </tr>
+
                   {expanded.includes(task.id) && (
                     <tr>
-                      <td colSpan={parentColumns.length + 1}>
-                        <div className="pl-8 pr-4 py-4 bg-gray-100 border-t border-b border-gray-200">
-                          <div className="border-l-4 border-blue-500 pl-4">
-                            <table className="w-full">
+                      <td colSpan={parentColumns.length + 2}>
+                        <div className="pl-8 pr-4 py-2 bg-gray-50/50">
+                          <div className="border-l-2 border-blue-500 pl-4">
+                            <table className="w-full border-collapse">
                               <thead>
                                 <tr>
-                                  <th className="w-8 px-4 py-2">
+                                  <th className="w-8 px-4 py-2 border border-gray-200">
                                     <input
                                       type="checkbox"
                                       checked={
@@ -918,45 +1001,45 @@ const TaskScheduler: React.FC = () => {
                                           }));
                                         }
                                       }}
-                                      className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                                      className="h-4 w-4 rounded border-gray-300 text-blue-600"
                                     />
                                   </th>
                                   {subtaskColumns.slice(1).map((column) => (
                                     <th
                                       key={column.id}
-                                      className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-x border-gray-200 relative"
-                                      style={{ width: column.width }}
+                                      className="group relative px-4 py-2 text-left border border-gray-200"
+                                      style={{
+                                        width: column.width,
+                                        minWidth: column.width,
+                                        maxWidth: column.width,
+                                      }}
                                       onMouseEnter={() =>
                                         handleColumnMouseEnter(column.id)
                                       }
                                       onMouseLeave={handleColumnMouseLeave}
+                                      draggable={!resizingColumn}
+                                      onDragStart={() =>
+                                        !resizingColumn &&
+                                        handleColumnDragStart(column)
+                                      }
+                                      onDragOver={(e) =>
+                                        !resizingColumn &&
+                                        handleColumnDragOver(e, column)
+                                      }
+                                      onDrop={() =>
+                                        !resizingColumn &&
+                                        handleColumnDrop(true)
+                                      }
+                                      onDoubleClick={() =>
+                                        handleColumnDoubleClick(column.id, true)
+                                      }
                                     >
-                                      <div
-                                        className="flex items-center justify-between"
-                                        draggable={!resizingColumn}
-                                        onDragStart={() =>
-                                          !resizingColumn &&
-                                          handleColumnDragStart(column)
-                                        }
-                                        onDragOver={(e) =>
-                                          !resizingColumn &&
-                                          handleColumnDragOver(e, column)
-                                        }
-                                        onDrop={() =>
-                                          !resizingColumn &&
-                                          handleColumnDrop(true)
-                                        }
-                                        onDoubleClick={() =>
-                                          handleColumnDoubleClick(
-                                            column.id,
-                                            true
-                                          )
-                                        }
-                                      >
+                                      <div className="flex items-center justify-between gap-2">
                                         {editingColumn?.columnId ===
                                           column.id &&
                                         editingColumn.isSubtask ? (
                                           <input
+                                            id={`column-input-${column.id}-${task.id}`}
                                             type="text"
                                             value={column.text}
                                             onChange={(e) =>
@@ -979,17 +1062,20 @@ const TaskScheduler: React.FC = () => {
                                                   true
                                                 );
                                             }}
-                                            className="bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
-                                            autoFocus
+                                            className="w-full rounded border-none bg-transparent px-1 text-xs font-medium uppercase text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span>{column.text}</span>
+                                          <>
+                                            <span className="text-xs font-medium uppercase text-gray-500">
+                                              {column.text}
+                                            </span>
+                                            <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                                          </>
                                         )}
-                                        <ArrowUpDown className="w-4 h-4 text-gray-400" />
                                       </div>
                                       {hoveringColumn === column.id && (
                                         <div
-                                          className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
+                                          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize bg-gray-300 hover:bg-gray-400"
                                           onMouseDown={(e) =>
                                             handleColumnResizeStart(
                                               e,
@@ -1002,10 +1088,13 @@ const TaskScheduler: React.FC = () => {
                                       )}
                                     </th>
                                   ))}
-                                  <th className="w-8 px-4 py-2">
+                                  <th className="w-8 px-4 py-2 border border-gray-200">
                                     <button
-                                      onClick={() => addNewColumn(true)}
-                                      className="p-1 hover:bg-gray-200 rounded"
+                                      onClick={() =>
+                                        addNewColumn(true, task.id)
+                                      }
+                                      className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
+                                      title="Add new column"
                                     >
                                       <Plus className="w-4 h-4 text-gray-400" />
                                     </button>
@@ -1019,8 +1108,8 @@ const TaskScheduler: React.FC = () => {
                                     className={`${
                                       subIndex % 2 === 0
                                         ? "bg-white"
-                                        : "bg-gray-200"
-                                    } hover:bg-gray-300`}
+                                        : "bg-gray-50/50"
+                                    } hover:bg-gray-100/50`}
                                     draggable
                                     onDragStart={(e) =>
                                       handleSubtaskDragStart(
@@ -1033,8 +1122,9 @@ const TaskScheduler: React.FC = () => {
                                     onDrop={(e) =>
                                       handleSubtaskDrop(e, task.id, subtask.id)
                                     }
+                                    onDragLeave={handleTaskDragLeave}
                                   >
-                                    <td className="px-4 py-2">
+                                    <td className="px-4 py-2 border border-gray-200">
                                       <input
                                         type="checkbox"
                                         checked={selectedSubtasks[
@@ -1046,83 +1136,78 @@ const TaskScheduler: React.FC = () => {
                                             subtask.id
                                           )
                                         }
-                                        className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
                                       />
                                     </td>
-                                    {subtaskColumns
-                                      .slice(1)
-                                      .map((column, colIndex) => (
-                                        <td
-                                          key={column.id}
-                                          className={
-                                            colIndex === 0
-                                              ? "px-4 py-2 border-x border-gray-200 text-left"
-                                              : "px-4 py-2 border-x border-gray-200 text-center"
-                                          }
-                                          style={{ width: column.width }}
-                                          onDoubleClick={() =>
-                                            handleCellDoubleClick(
-                                              task.id,
-                                              column.id,
-                                              subtask[column.value] || "",
-                                              subtask.id
-                                            )
-                                          }
-                                        >
-                                          {editingCell?.taskId === task.id &&
-                                          editingCell?.columnId === column.id &&
-                                          editingCell?.subtaskId ===
-                                            subtask.id ? (
-                                            <input
-                                              id={`cell-input-${subtask.id}`}
-                                              type="text"
-                                              value={editingCell?.value ?? ""}
-                                              onChange={handleCellChange}
-                                              onBlur={handleCellSave}
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter")
-                                                  handleCellSave();
-                                              }}
-                                              className="w-full px-2 py-1 border rounded"
-                                              autoFocus={
-                                                newChildTaskId === subtask.id
-                                              }
-                                            />
-                                          ) : column.id === "status" ? (
-                                            <span
-                                              className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                                                subtask[column.value] || ""
-                                              )}`}
-                                            >
-                                              {subtask[column.value] || ""}
-                                            </span>
-                                          ) : column.id === "owner" ? (
-                                            <div className="flex items-center">
-                                              <User className="w-4 h-4 mr-2 text-gray-400" />
-                                              <span>
-                                                {subtask[column.value] || ""}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            subtask[column.value] || ""
-                                          )}
-                                        </td>
-                                      ))}
-                                    <td className="px-4 py-2">
-                                      <button className="p-1 hover:bg-gray-200 rounded">
+                                    {subtaskColumns.slice(1).map((column) => (
+                                      <td
+                                        key={column.id}
+                                        className="px-4 py-2 border border-gray-200"
+                                        style={{
+                                          width: column.width,
+                                          minWidth: column.width,
+                                          maxWidth: column.width,
+                                        }}
+                                        onDoubleClick={() =>
+                                          handleCellDoubleClick(
+                                            task.id,
+                                            column.id,
+                                            subtask[column.value] || "",
+                                            subtask.id
+                                          )
+                                        }
+                                      >
+                                        {editingCell?.taskId === task.id &&
+                                        editingCell?.columnId === column.id &&
+                                        editingCell?.subtaskId ===
+                                          subtask.id ? (
+                                          <input
+                                            type="text"
+                                            value={editingCell.value}
+                                            onChange={handleCellChange}
+                                            onBlur={handleCellSave}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                handleCellSave();
+                                            }}
+                                            className="w-full px-2 py-1 border rounded"
+                                            autoFocus
+                                          />
+                                        ) : column.id === "status" ? (
+                                          <span
+                                            className={`px-2 py-1 rounded text-xs ${getStatusColor(
+                                              subtask[column.value] || ""
+                                            )}`}
+                                          >
+                                            {subtask[column.value] || ""}
+                                          </span>
+                                        ) : (
+                                          subtask[column.value] || ""
+                                        )}
+                                      </td>
+                                    ))}
+                                    <td className="px-4 py-2 border border-gray-200">
+                                      <button className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100">
                                         <MoreHorizontal className="w-4 h-4 text-gray-400" />
                                       </button>
                                     </td>
                                   </tr>
                                 ))}
+                                <tr>
+                                  <td
+                                    colSpan={subtaskColumns.length + 1}
+                                    className="border border-gray-200"
+                                  >
+                                    <button
+                                      onClick={() => addNewSubtask(task.id)}
+                                      className="w-full px-4 py-2 text-left text-gray-500 hover:bg-gray-50 flex items-center gap-2"
+                                    >
+                                      <Plus className="w-4 h-4" />+ Add subitem
+                                    </button>
+                                  </td>
+                                </tr>
                               </tbody>
                             </table>
-                            <button
-                              onClick={() => addNewSubtask(task.id)}
-                              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            >
-                              Add Subtask
-                            </button>
                           </div>
                         </div>
                       </td>
@@ -1130,6 +1215,16 @@ const TaskScheduler: React.FC = () => {
                   )}
                 </React.Fragment>
               ))}
+              <tr>
+                <td colSpan={parentColumns.length + 2}>
+                  <button
+                    onClick={addNewTask}
+                    className="w-full px-4 py-2 text-left text-gray-500 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />+ Add task
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
