@@ -52,13 +52,15 @@ const ColumnTypeMenu: React.FC<{
   onSelect: (type: ColumnType) => void;
   onClose: () => void;
   position: { x: number; y: number };
-}> = ({ onSelect, onClose, position }) => {
+  isSubtask: boolean;
+  taskId?: string;
+}> = ({ onSelect, onClose, position, isSubtask, taskId }) => {
   return (
-    <div 
+    <div
       className="fixed z-50 bg-white rounded-lg shadow-xl border w-[280px]"
-      style={{ 
-        top: `${position.y}px`, 
-        left: `${position.x - 280}px` // Subtract menu width to position it to the left
+      style={{
+        top: `${position.y}px`,
+        left: `${position.x - 280}px`, // Subtract menu width to position it to the left
       }}
     >
       <div className="p-2">
@@ -75,7 +77,7 @@ const ColumnTypeMenu: React.FC<{
         </div>
         <div className="space-y-1">
           <button
-            onClick={() => onSelect('status')}
+            onClick={() => onSelect("status")}
             className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
           >
             <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center group-hover:bg-emerald-200">
@@ -83,15 +85,15 @@ const ColumnTypeMenu: React.FC<{
             </div>
             <span className="text-sm text-gray-700">Status</span>
           </button>
-          
+
           <button
-            onClick={() => onSelect('text')}
+            onClick={() => onSelect("text")}
             className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
           >
             <div className="w-6 h-6 bg-amber-100 rounded flex items-center justify-center group-hover:bg-amber-200">
               <div className="w-3 h-3 text-amber-500">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/>
+                  <path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z" />
                 </svg>
               </div>
             </div>
@@ -99,13 +101,13 @@ const ColumnTypeMenu: React.FC<{
           </button>
 
           <button
-            onClick={() => onSelect('people')}
+            onClick={() => onSelect("people")}
             className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
           >
             <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center group-hover:bg-blue-200">
               <div className="w-3 h-3 text-blue-500">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                 </svg>
               </div>
             </div>
@@ -113,13 +115,13 @@ const ColumnTypeMenu: React.FC<{
           </button>
 
           <button
-            onClick={() => onSelect('number')}
+            onClick={() => onSelect("number")}
             className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
           >
             <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center group-hover:bg-purple-200">
               <div className="w-3 h-3 text-purple-500">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8c0 1.11-.9 2-2 2h-2v2h4v2H9v-4c0-1.11.9-2 2-2h2V9H9V7h4c1.1 0 2 .89 2 2v2z"/>
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8c0 1.11-.9 2-2 2h-2v2h4v2H9v-4c0-1.11.9-2 2-2h2V9H9V7h4c1.1 0 2 .89 2 2v2z" />
                 </svg>
               </div>
             </div>
@@ -127,13 +129,13 @@ const ColumnTypeMenu: React.FC<{
           </button>
 
           <button
-            onClick={() => onSelect('date')}
+            onClick={() => onSelect("date")}
             className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md flex items-center gap-3 group"
           >
             <div className="w-6 h-6 bg-rose-100 rounded flex items-center justify-center group-hover:bg-rose-200">
               <div className="w-3 h-3 text-rose-500">
                 <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                 </svg>
               </div>
             </div>
@@ -294,6 +296,7 @@ const TaskScheduler: React.FC = () => {
     value: string;
   } | null>(null);
 
+  // Update the editingColumn state to include taskId
   const [editingColumn, setEditingColumn] = useState<{
     columnId: string;
     isSubtask: boolean;
@@ -336,8 +339,10 @@ const TaskScheduler: React.FC = () => {
 
   const [newTaskInput, setNewTaskInput] = useState<string | null>(null);
 
+  // Update the showColumnTypeMenu state
   const [showColumnTypeMenu, setShowColumnTypeMenu] = useState<{
     isSubtask: boolean;
+    taskId?: string;
     position: { x: number; y: number };
   } | null>(null);
 
@@ -392,7 +397,12 @@ const TaskScheduler: React.FC = () => {
     );
   };
 
-  const addNewColumn = (type: ColumnType, isSubtask: boolean) => {
+  // Update the addNewColumn function
+  const addNewColumn = (
+    type: ColumnType,
+    isSubtask: boolean,
+    taskId?: string
+  ) => {
     const newColumn: Column = {
       id: `col-${Date.now()}`,
       text: "",
@@ -422,7 +432,7 @@ const TaskScheduler: React.FC = () => {
       );
     }
 
-    setEditingColumn({ columnId: newColumn.id, isSubtask });
+    setEditingColumn({ columnId: newColumn.id, isSubtask, taskId });
     setShowColumnTypeMenu(null);
   };
 
@@ -799,9 +809,14 @@ const TaskScheduler: React.FC = () => {
     });
   }, [searchQuery, searchType, tasks]);
 
-  const handleColumnDoubleClick = (columnId: string, isSubtask: boolean) => {
+  // Modify the handleColumnDoubleClick function
+  const handleColumnDoubleClick = (
+    columnId: string,
+    isSubtask: boolean,
+    taskId?: string
+  ) => {
     setEditingCell(null);
-    setEditingColumn({ columnId, isSubtask });
+    setEditingColumn({ columnId, isSubtask, taskId });
   };
 
   const handleColumnNameChange = (
@@ -817,11 +832,16 @@ const TaskScheduler: React.FC = () => {
     );
   };
 
-  const handleColumnNameSave = (columnId: string, isSubtask: boolean) => {
+  // Update the handleColumnNameSave function
+  const handleColumnNameSave = (
+    columnId: string,
+    isSubtask: boolean,
+    taskId?: string
+  ) => {
     const columns = isSubtask ? subtaskColumns : parentColumns;
     const column = columns.find((col) => col.id === columnId);
     if (column) {
-      handleColumnTitleEdit(columnId, column.text, isSubtask);
+      handleColumnTitleEdit(columnId, column.text || "New Column", isSubtask);
     }
     setEditingColumn(null);
     // Ensure focus is removed from the input
@@ -1042,17 +1062,28 @@ const TaskScheduler: React.FC = () => {
         );
 
       default:
-        return <EditableText text={value} onSave={onSave} />;
+        return (
+          <EditableText
+            text={value || (column.text ? "" : "Click to edit")}
+            onSave={onSave}
+            className={column.text ? "" : "italic text-gray-400"}
+          />
+        );
     }
   };
 
   // Modify the column add button click handler
-  const handleAddColumnClick = (e: React.MouseEvent, isSubtask: boolean) => {
+  const handleAddColumnClick = (
+    e: React.MouseEvent,
+    isSubtask: boolean,
+    taskId?: string
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     setShowColumnTypeMenu({
       isSubtask,
+      taskId,
       position: {
         x: rect.left,
         y: rect.bottom,
@@ -1148,6 +1179,8 @@ const TaskScheduler: React.FC = () => {
                               handleColumnNameSave(column.id, false);
                           }}
                           className="w-full rounded border-none bg-transparent px-1 text-xs font-medium uppercase text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter column name"
+                          autoFocus
                         />
                       ) : (
                         <>
@@ -1157,7 +1190,7 @@ const TaskScheduler: React.FC = () => {
                               handleColumnDoubleClick(column.id, false)
                             }
                           >
-                            {column.text}
+                            {column.text || "Click to edit"}
                           </span>
                           <ArrowUpDown className="h-3 w-3 text-gray-400" />
                         </>
@@ -1331,13 +1364,18 @@ const TaskScheduler: React.FC = () => {
                                         handleColumnDrop(true)
                                       }
                                       onDoubleClick={() =>
-                                        handleColumnDoubleClick(column.id, true)
+                                        handleColumnDoubleClick(
+                                          column.id,
+                                          true,
+                                          task.id
+                                        )
                                       }
                                     >
                                       <div className="flex items-center justify-between gap-2">
                                         {editingColumn?.columnId ===
                                           column.id &&
-                                        editingColumn.isSubtask ? (
+                                        editingColumn.isSubtask &&
+                                        editingColumn.taskId === task.id ? (
                                           <input
                                             id={`column-input-${column.id}-${task.id}`}
                                             type="text"
@@ -1352,22 +1390,26 @@ const TaskScheduler: React.FC = () => {
                                             onBlur={() =>
                                               handleColumnNameSave(
                                                 column.id,
-                                                true
+                                                true,
+                                                task.id
                                               )
                                             }
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter")
                                                 handleColumnNameSave(
                                                   column.id,
-                                                  true
+                                                  true,
+                                                  task.id
                                                 );
                                             }}
                                             className="w-full rounded border-none bg-transparent px-1 text-xs font-medium uppercase text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter column name"
+                                            autoFocus
                                           />
                                         ) : (
                                           <>
                                             <span className="text-xs font-medium uppercase text-gray-500">
-                                              {column.text}
+                                              {column.text || "Click to edit"}
                                             </span>
                                             <ArrowUpDown className="h-3 w-3 text-gray-400" />
                                           </>
@@ -1391,7 +1433,7 @@ const TaskScheduler: React.FC = () => {
                                   <th className="w-8 px-4 py-2 border border-gray-200">
                                     <button
                                       onClick={(e) =>
-                                        handleAddColumnClick(e, true)
+                                        handleAddColumnClick(e, true, task.id)
                                       }
                                       className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
                                       title="Add new column"
@@ -1661,10 +1703,16 @@ const TaskScheduler: React.FC = () => {
           />
           <ColumnTypeMenu
             onSelect={(type) =>
-              addNewColumn(type, showColumnTypeMenu.isSubtask)
+              addNewColumn(
+                type,
+                showColumnTypeMenu.isSubtask,
+                showColumnTypeMenu.taskId
+              )
             }
             onClose={() => setShowColumnTypeMenu(null)}
             position={showColumnTypeMenu.position}
+            isSubtask={showColumnTypeMenu.isSubtask}
+            taskId={showColumnTypeMenu.taskId}
           />
         </>
       )}
