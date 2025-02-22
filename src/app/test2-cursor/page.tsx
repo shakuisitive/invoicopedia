@@ -5,14 +5,14 @@ import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 
 // Add new type definitions
-type ColumnType = 'status' | 'text' | 'people' | 'number' | 'date';
+type ColumnType = "status" | "text" | "people" | "number" | "date";
 
 interface Column {
   id: string;
   text: string;
   value: string;
   width: number;
-  type: ColumnType;  // Add type field
+  type: ColumnType; // Add type field
 }
 
 interface SubTask {
@@ -36,15 +36,15 @@ interface Task {
 
 // Add predefined options
 const STATUS_OPTIONS = [
-  { label: 'Done', value: 'done', color: 'bg-emerald-500' },
-  { label: 'Working on it', value: 'working', color: 'bg-amber-400' },
-  { label: 'Stuck', value: 'stuck', color: 'bg-red-500' }
+  { label: "Done", value: "done", color: "bg-emerald-500" },
+  { label: "Working on it", value: "working", color: "bg-amber-400" },
+  { label: "Stuck", value: "stuck", color: "bg-red-500" },
 ];
 
 const PEOPLE_OPTIONS = [
-  { label: 'John Doe', value: 'john' },
-  { label: 'Jane Smith', value: 'jane' },
-  { label: 'Bob Johnson', value: 'bob' }
+  { label: "John Doe", value: "john" },
+  { label: "Jane Smith", value: "jane" },
+  { label: "Bob Johnson", value: "bob" },
 ];
 
 // Add column type menu component with improved styling
@@ -58,7 +58,7 @@ const ColumnTypeMenu: React.FC<{
       className="fixed z-50 bg-white rounded-lg shadow-xl border w-[280px]"
       style={{ 
         top: `${position.y}px`, 
-        left: `${position.x}px` 
+        left: `${position.x - 280}px` // Subtract menu width to position it to the left
       }}
     >
       <div className="p-2">
@@ -208,39 +208,63 @@ const EditableText: React.FC<{
 const TaskScheduler: React.FC = () => {
   const [expanded, setExpanded] = useState<string[]>([]);
   const [parentColumns, setParentColumns] = useState<Column[]>([
-    { id: "checkbox", text: "", value: "checkbox", width: 40, type: 'text' },
-    { id: "name", text: "Item", value: "name", width: 300, type: 'text' },
-    { id: "person", text: "Person", value: "person", width: 150, type: 'people' },
-    { id: "status", text: "Status", value: "status", width: 150, type: 'status' },
-    { id: "date", text: "Date", value: "date", width: 100, type: 'date' },
+    { id: "checkbox", text: "", value: "checkbox", width: 40, type: "text" },
+    { id: "name", text: "Item", value: "name", width: 300, type: "text" },
+    {
+      id: "person",
+      text: "Person",
+      value: "person",
+      width: 150,
+      type: "people",
+    },
+    {
+      id: "status",
+      text: "Status",
+      value: "status",
+      width: 150,
+      type: "status",
+    },
+    { id: "date", text: "Date", value: "date", width: 100, type: "date" },
   ]);
   const [subtaskColumns, setSubtaskColumns] = useState<Column[]>([
-    { id: "checkbox", text: "", value: "checkbox", width: 40, type: 'text' },
-    { id: "subitem", text: "Subitem", value: "subitem", width: 300, type: 'text' },
-    { id: "owner", text: "Owner", value: "owner", width: 150, type: 'people' },
-    { id: "status", text: "Status", value: "status", width: 150, type: 'status' },
-    { id: "date", text: "Date", value: "date", width: 100, type: 'date' },
+    { id: "checkbox", text: "", value: "checkbox", width: 40, type: "text" },
+    {
+      id: "subitem",
+      text: "Subitem",
+      value: "subitem",
+      width: 300,
+      type: "text",
+    },
+    { id: "owner", text: "Owner", value: "owner", width: 150, type: "people" },
+    {
+      id: "status",
+      text: "Status",
+      value: "status",
+      width: 150,
+      type: "status",
+    },
+    { id: "date", text: "Date", value: "date", width: 100, type: "date" },
   ]);
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: "1",
       name: "Project kickoff meeting",
       person: "John Doe",
-      status: "Completed",
+      status: "done",
       date: "Feb 15",
       subitems: [
         {
           id: "1-1",
           subitem: "Prepare agenda",
           owner: "Sarah",
-          status: "Completed",
+          status: "done",
           date: "Feb 14",
         },
         {
           id: "1-2",
           subitem: "Send invitations",
           owner: "John",
-          status: "Completed",
+          status: "done",
           date: "Feb 13",
         },
       ],
@@ -249,7 +273,7 @@ const TaskScheduler: React.FC = () => {
       id: "2",
       name: "Design system update",
       person: "Emily Chen",
-      status: "In Progress",
+      status: "working",
       date: "Mar 1",
       subitems: [],
     },
@@ -257,7 +281,7 @@ const TaskScheduler: React.FC = () => {
       id: "3",
       name: "Client presentation",
       person: "Alex Johnson",
-      status: "Not Started",
+      status: "stuck",
       date: "Mar 10",
       subitems: [],
     },
@@ -374,7 +398,7 @@ const TaskScheduler: React.FC = () => {
       text: "",
       value: `new-column-${Date.now()}`,
       width: 150,
-      type: type
+      type: type,
     };
 
     if (isSubtask) {
@@ -384,7 +408,7 @@ const TaskScheduler: React.FC = () => {
           ...task,
           subitems: task.subitems.map((subtask) => ({
             ...subtask,
-            [newColumn.value]: type === 'status' ? 'working' : '',
+            [newColumn.value]: type === "status" ? "working" : "",
           })),
         }))
       );
@@ -393,7 +417,7 @@ const TaskScheduler: React.FC = () => {
       setTasks((prevTasks) =>
         prevTasks.map((task) => ({
           ...task,
-          [newColumn.value]: type === 'status' ? 'working' : '',
+          [newColumn.value]: type === "status" ? "working" : "",
         }))
       );
     }
@@ -927,26 +951,57 @@ const TaskScheduler: React.FC = () => {
   };
 
   // Add cell renderer function
-  const renderCell = (column: Column, value: string, onSave: (newValue: string) => void) => {
+  const renderCell = (
+    column: Column,
+    value: string,
+    onSave: (newValue: string) => void
+  ) => {
     switch (column.type) {
-      case 'status':
+      case "status":
         return (
-          <select
-            value={value || 'working'}
-            onChange={(e) => onSave(e.target.value)}
-            className={`px-2 py-1 rounded text-xs text-white ${
-              getStatusColor(value || 'working')
-            }`}
-          >
-            {STATUS_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCellDoubleClick(
+                  column.id,
+                  value,
+                  editingCell?.taskId || "",
+                  editingCell?.subtaskId
+                );
+              }}
+              className={`px-2 py-1 rounded text-xs text-white cursor-pointer ${getStatusColor(
+                value || "working"
+              )}`}
+            >
+              {value || "working"}
+            </div>
+            {editingCell?.columnId === column.id && (
+              <div className="absolute z-50 top-full left-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200">
+                {STATUS_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCellSave(
+                        editingCell.taskId,
+                        column.id,
+                        option.value,
+                        editingCell.subtaskId
+                      );
+                      setEditingCell(null);
+                    }}
+                    className={`px-3 py-2 text-xs cursor-pointer ${option.color} text-white hover:opacity-90`}
+                  >
+                    {option.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         );
-      
-      case 'people':
+
+      case "people":
         return (
           <select
             value={value}
@@ -954,7 +1009,7 @@ const TaskScheduler: React.FC = () => {
             className="px-2 py-1 rounded border border-gray-200"
           >
             <option value="">Select person...</option>
-            {PEOPLE_OPTIONS.map(option => (
+            {PEOPLE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -962,7 +1017,7 @@ const TaskScheduler: React.FC = () => {
           </select>
         );
 
-      case 'number':
+      case "number":
         return (
           <input
             type="number"
@@ -976,7 +1031,7 @@ const TaskScheduler: React.FC = () => {
           />
         );
 
-      case 'date':
+      case "date":
         return (
           <input
             type="date"
@@ -987,12 +1042,7 @@ const TaskScheduler: React.FC = () => {
         );
 
       default:
-        return (
-          <EditableText
-            text={value}
-            onSave={onSave}
-          />
-        );
+        return <EditableText text={value} onSave={onSave} />;
     }
   };
 
@@ -1003,10 +1053,10 @@ const TaskScheduler: React.FC = () => {
     const rect = e.currentTarget.getBoundingClientRect();
     setShowColumnTypeMenu({
       isSubtask,
-      position: { 
-        x: Math.max(rect.left - 290, 10), // 290px is menu width + small buffer, 10px minimum from left edge
-        y: rect.bottom 
-      }
+      position: {
+        x: rect.left,
+        y: rect.bottom,
+      },
     });
   };
 
@@ -1185,8 +1235,11 @@ const TaskScheduler: React.FC = () => {
                                 <Plus className="w-4 h-4 text-gray-500" />
                               </button>
                             )}
-                            {renderCell(column, String(task[column.value] || ""), (newValue) =>
-                              handleCellSave(task.id, column.id, newValue)
+                            {renderCell(
+                              column,
+                              String(task[column.value] || ""),
+                              (newValue) =>
+                                handleCellSave(task.id, column.id, newValue)
                             )}
                           </div>
                         ) : column.id === "status" ? (
@@ -1198,8 +1251,11 @@ const TaskScheduler: React.FC = () => {
                             {String(task[column.value] || "")}
                           </span>
                         ) : (
-                          renderCell(column, String(task[column.value] || ""), (newValue) =>
-                            handleCellSave(task.id, column.id, newValue)
+                          renderCell(
+                            column,
+                            String(task[column.value] || ""),
+                            (newValue) =>
+                              handleCellSave(task.id, column.id, newValue)
                           )
                         )}
                       </td>
@@ -1213,6 +1269,7 @@ const TaskScheduler: React.FC = () => {
 
                   {expanded.includes(task.id) && (
                     <tr>
+                      {/* children */}
                       <td colSpan={parentColumns.length + 2}>
                         <div className="pl-8 pr-4 py-2 bg-gray-50/50">
                           <div className="border-l-2 border-blue-500 pl-4">
@@ -1333,7 +1390,9 @@ const TaskScheduler: React.FC = () => {
                                   ))}
                                   <th className="w-8 px-4 py-2 border border-gray-200">
                                     <button
-                                      onClick={(e) => handleAddColumnClick(e, true)}
+                                      onClick={(e) =>
+                                        handleAddColumnClick(e, true)
+                                      }
                                       className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
                                       title="Add new column"
                                     >
@@ -1435,12 +1494,17 @@ const TaskScheduler: React.FC = () => {
                                             }}
                                             className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
                                           />
-                                        ) : renderCell(column, String(subtask[column.value] || ""), (newValue) =>
-                                          handleCellSave(
-                                            task.id,
-                                            column.id,
-                                            newValue,
-                                            subtask.id
+                                        ) : (
+                                          renderCell(
+                                            column,
+                                            String(subtask[column.value] || ""),
+                                            (newValue) =>
+                                              handleCellSave(
+                                                task.id,
+                                                column.id,
+                                                newValue,
+                                                subtask.id
+                                              )
                                           )
                                         )}
                                       </td>
@@ -1591,12 +1655,14 @@ const TaskScheduler: React.FC = () => {
 
       {showColumnTypeMenu && (
         <>
-          <div 
-            className="fixed inset-0" 
+          <div
+            className="fixed inset-0"
             onClick={() => setShowColumnTypeMenu(null)}
           />
           <ColumnTypeMenu
-            onSelect={(type) => addNewColumn(type, showColumnTypeMenu.isSubtask)}
+            onSelect={(type) =>
+              addNewColumn(type, showColumnTypeMenu.isSubtask)
+            }
             onClose={() => setShowColumnTypeMenu(null)}
             position={showColumnTypeMenu.position}
           />
