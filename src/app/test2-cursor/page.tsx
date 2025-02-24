@@ -1678,7 +1678,7 @@ const TaskScheduler = () => {
                                       onClick={() => addNewSubtask(task.id)}
                                       className="w-full px-4 py-2 text-left text-gray-500 hover:bg-gray-50 flex items-center gap-2"
                                     >
-                                      <Plus className="w-4 h-4" />+ Add subitem
+                                      <Plus className="w-4 h-4" /> Add subitem
                                     </button>
                                   </td>
                                 </tr>
@@ -1698,7 +1698,7 @@ const TaskScheduler = () => {
                       onClick={addNewTask}
                       className="w-full px-4 py-2 text-left text-gray-500 hover:bg-gray-50 flex items-center gap-2"
                     >
-                      <Plus className="w-4 h-4" />+ Add task
+                      <Plus className="w-4 h-4" /> Add task
                     </button>
                   </td>
                 </tr>
