@@ -266,9 +266,9 @@ const StatusCell = ({ status, onStatusChange }) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative -m-2">
       <button
-        className={`px-2 py-1 rounded text-xs text-white ${getStatusColor(
+        className={`w-full h-full px-4 py-2 text-xs text-white ${getStatusColor(
           currentStatus
         )}`}
         onClick={() => setIsOpen(!isOpen)}
