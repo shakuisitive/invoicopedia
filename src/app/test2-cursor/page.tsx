@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as React from "react";
 import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import { useState } from "react";
 
-// Add new type definitions
 type ColumnType = "status" | "text" | "people" | "number" | "date";
 
 interface Column {
@@ -207,7 +207,87 @@ const EditableText: React.FC<{
   );
 };
 
-const TaskScheduler: React.FC = () => {
+// Add these new components and functions before the TaskScheduler component
+
+const StatusDropdown = ({ status, onSelect, onClose }) => {
+  const statusOptions = [
+    { label: "Done", value: "done", color: "bg-emerald-500" },
+    { label: "Working", value: "working", color: "bg-yellow-500" },
+    { label: "Stuck", value: "stuck", color: "bg-red-500" },
+  ];
+
+  return (
+    <div className="absolute z-50 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+      <div
+        className="py-1"
+        role="menu"
+        aria-orientation="vertical"
+        aria-labelledby="options-menu"
+      >
+        {statusOptions.map((option) => (
+          <button
+            key={option.value}
+            className={`${option.color} text-white group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+            onClick={() => {
+              onSelect(option.value);
+              onClose();
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const StatusCell = ({ status, onStatusChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(status);
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case "done":
+        return "bg-emerald-500";
+      case "working":
+        return "bg-yellow-500";
+      case "stuck":
+        return "bg-red-500";
+      default:
+        return "bg-gray-200";
+    }
+  };
+
+  const handleStatusChange = (newStatus) => {
+    setCurrentStatus(newStatus);
+    onStatusChange(newStatus);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        className={`px-2 py-1 rounded text-xs text-white ${getStatusColor(
+          currentStatus
+        )}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {currentStatus}
+      </button>
+      {isOpen && (
+        <StatusDropdown
+          status={currentStatus}
+          onSelect={handleStatusChange}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Modify the TaskScheduler component
+const TaskScheduler = () => {
+  // ... (keep existing state and functions)
   const [expanded, setExpanded] = useState<string[]>([]);
   const [parentColumns, setParentColumns] = useState<Column[]>([
     { id: "checkbox", text: "", value: "checkbox", width: 40, type: "text" },
@@ -218,13 +298,6 @@ const TaskScheduler: React.FC = () => {
       value: "person",
       width: 150,
       type: "people",
-    },
-    {
-      id: "status",
-      text: "Status",
-      value: "status",
-      width: 150,
-      type: "status",
     },
     { id: "date", text: "Date", value: "date", width: 100, type: "date" },
   ]);
@@ -345,6 +418,8 @@ const TaskScheduler: React.FC = () => {
     taskId?: string;
     position: { x: number; y: number };
   } | null>(null);
+
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const handleColumnMouseEnter = (columnId: string) => {
     setHoveringColumn(columnId);
@@ -932,6 +1007,27 @@ const TaskScheduler: React.FC = () => {
     setNewTaskInput(null);
   };
 
+  const handleStatusChange = (taskId, newStatus, subtaskId = null) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          if (subtaskId) {
+            return {
+              ...task,
+              subitems: task.subitems.map((subtask) =>
+                subtask.id === subtaskId
+                  ? { ...subtask, status: newStatus }
+                  : subtask
+              ),
+            };
+          }
+          return { ...task, status: newStatus };
+        }
+        return task;
+      })
+    );
+  };
+
   const handleCellSave = (
     taskId: string,
     columnId: string,
@@ -971,54 +1067,16 @@ const TaskScheduler: React.FC = () => {
   };
 
   // Add cell renderer function
-  const renderCell = (
-    column: Column,
-    value: string,
-    onSave: (newValue: string) => void
-  ) => {
+  const renderCell = (column, value, onSave, taskId, subtaskId = null) => {
     switch (column.type) {
       case "status":
         return (
-          <div className="relative">
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCellDoubleClick(
-                  column.id,
-                  value,
-                  editingCell?.taskId || "",
-                  editingCell?.subtaskId
-                );
-              }}
-              className={`px-2 py-1 rounded text-xs text-white cursor-pointer ${getStatusColor(
-                value || "working"
-              )}`}
-            >
-              {value || "working"}
-            </div>
-            {editingCell?.columnId === column.id && (
-              <div className="absolute z-50 top-full left-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200">
-                {STATUS_OPTIONS.map((option) => (
-                  <div
-                    key={option.value}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCellSave(
-                        editingCell.taskId,
-                        column.id,
-                        option.value,
-                        editingCell.subtaskId
-                      );
-                      setEditingCell(null);
-                    }}
-                    className={`px-3 py-2 text-xs cursor-pointer ${option.color} text-white hover:opacity-90`}
-                  >
-                    {option.label}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <StatusCell
+            status={value}
+            onStatusChange={(newStatus) =>
+              handleStatusChange(taskId, newStatus, subtaskId)
+            }
+          />
         );
 
       case "people":
@@ -1091,6 +1149,7 @@ const TaskScheduler: React.FC = () => {
     });
   };
 
+  // Modify the table rows in the return statement
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       {/* Top toolbar remains the same */}
@@ -1121,15 +1180,26 @@ const TaskScheduler: React.FC = () => {
             <option value="parentTask">Parent Tasks</option>
             <option value="subTask">Subtasks</option>
           </select>
-          <div className="flex items-center gap-2 bg-white rounded px-3 py-1.5 border border-gray-200">
-            <Search className="w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              className="border-none outline-none bg-transparent text-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div className="flex items-center gap-4">
+            <select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              className="border border-gray-200 rounded px-2 py-1.5 text-sm bg-transparent"
+            >
+              <option value="all">All</option>
+              <option value="parentTask">Parent Tasks</option>
+              <option value="subTask">Subtasks</option>
+            </select>
+            <div className="flex items-center gap-2 bg-white rounded px-3 py-1.5 border border-gray-200">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                className="border-none outline-none bg-transparent text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1176,7 +1246,7 @@ const TaskScheduler: React.FC = () => {
                           onBlur={() => handleColumnNameSave(column.id, false)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter")
-                              handleColumnNameSave(column.id, false);
+                              handleColumnNameSave(e.id, false);
                           }}
                           className="w-full rounded border-none bg-transparent px-1 text-xs font-medium uppercase text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Enter column name"
@@ -1227,6 +1297,7 @@ const TaskScheduler: React.FC = () => {
                         ? "bg-white hover:bg-gray-100"
                         : "bg-gray-50 hover:bg-gray-100"
                     }`}
+                    onClick={() => setOpenDropdown(null)}
                     draggable
                     onDragStart={(e) => handleTaskDragStart(e, task.id)}
                     onDragOver={handleTaskDragOver}
@@ -1272,7 +1343,8 @@ const TaskScheduler: React.FC = () => {
                               column,
                               String(task[column.value] || ""),
                               (newValue) =>
-                                handleCellSave(task.id, column.id, newValue)
+                                handleCellSave(task.id, column.id, newValue),
+                              task.id
                             )}
                           </div>
                         ) : column.id === "status" ? (
@@ -1288,7 +1360,8 @@ const TaskScheduler: React.FC = () => {
                             column,
                             String(task[column.value] || ""),
                             (newValue) =>
-                              handleCellSave(task.id, column.id, newValue)
+                              handleCellSave(task.id, column.id, newValue),
+                            task.id
                           )
                         )}
                       </td>
@@ -1397,7 +1470,7 @@ const TaskScheduler: React.FC = () => {
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter")
                                                 handleColumnNameSave(
-                                                  column.id,
+                                                  e.id,
                                                   true,
                                                   task.id
                                                 );
@@ -1446,13 +1519,13 @@ const TaskScheduler: React.FC = () => {
                               <tbody>
                                 {task.subitems.map((subtask, subIndex) => (
                                   <tr
-                                    id={`subtask-${subtask.id}`}
                                     key={subtask.id}
                                     className={`${
                                       subIndex % 2 === 0
                                         ? "bg-white"
                                         : "bg-gray-50/50"
                                     } hover:bg-gray-100/50`}
+                                    onClick={() => setOpenDropdown(null)}
                                     draggable
                                     onDragStart={(e) =>
                                       handleSubtaskDragStart(
@@ -1492,62 +1565,18 @@ const TaskScheduler: React.FC = () => {
                                           maxWidth: column.width,
                                         }}
                                       >
-                                        {editingCell &&
-                                        editingCell.taskId === task.id &&
-                                        editingCell.subtaskId === subtask.id &&
-                                        editingCell.columnId === column.id ? (
-                                          <input
-                                            autoFocus
-                                            value={editingCell.value}
-                                            onChange={(e) =>
-                                              setEditingCell({
-                                                ...editingCell,
-                                                value: e.target.value,
-                                              })
-                                            }
-                                            onBlur={() => {
-                                              if (
-                                                editingCell.value.trim() !== ""
-                                              ) {
-                                                handleCellSave(
-                                                  task.id,
-                                                  column.id,
-                                                  editingCell.value,
-                                                  subtask.id
-                                                );
-                                              }
-                                              setEditingCell(null);
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter") {
-                                                if (
-                                                  editingCell.value.trim() !==
-                                                  ""
-                                                ) {
-                                                  handleCellSave(
-                                                    task.id,
-                                                    column.id,
-                                                    editingCell.value,
-                                                    subtask.id
-                                                  );
-                                                }
-                                                setEditingCell(null);
-                                              }
-                                            }}
-                                            className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
-                                          />
-                                        ) : (
-                                          renderCell(
-                                            column,
-                                            String(subtask[column.value] || ""),
-                                            (newValue) =>
-                                              handleCellSave(
-                                                task.id,
-                                                column.id,
-                                                newValue,
-                                                subtask.id
-                                              )
-                                          )
+                                        {renderCell(
+                                          column,
+                                          String(subtask[column.value] || ""),
+                                          (newValue) =>
+                                            handleCellSave(
+                                              task.id,
+                                              column.id,
+                                              newValue,
+                                              subtask.id
+                                            ),
+                                          task.id,
+                                          subtask.id
                                         )}
                                       </td>
                                     ))}
