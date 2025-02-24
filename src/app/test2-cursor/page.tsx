@@ -213,7 +213,7 @@ const EditableText: React.FC<{
 // The StatusCell component is the key to fixing the issue
 const StatusCell = ({
   status,
-  columnId, // Add columnId prop
+  columnId,
   onStatusChange,
   taskId,
   subtaskId = null,
@@ -224,18 +224,16 @@ const StatusCell = ({
     { label: "Done", value: "done", color: "bg-emerald-500" },
     { label: "Working", value: "working", color: "bg-yellow-500" },
     { label: "Stuck", value: "stuck", color: "bg-red-500" },
-    { label: "Not Started", value: "not-started", color: "bg-gray-300" },
   ];
 
   const getStatusColor = (status) => {
     const option = statusOptions.find(
-      (opt) => opt.value === status.toLowerCase()
+      (opt) => opt.value === status?.toLowerCase()
     );
-    return option?.color || "bg-gray-300";
+    return option?.color || "bg-gray-200"; // Default to gray if no status
   };
 
   const handleStatusChange = (newStatus) => {
-    // Pass the columnId to identify which status column is being updated
     onStatusChange(taskId, columnId, newStatus, subtaskId);
     setIsOpen(false);
   };
@@ -243,19 +241,27 @@ const StatusCell = ({
   return (
     <div className="relative">
       <button
-        className={`w-full h-full px-3 py-1.5 text-sm text-white ${getStatusColor(
+        className={`w-full h-full px-3 py-1.5 text-sm ${
           status
-        )} rounded-md hover:opacity-90 transition-opacity`}
+            ? `text-white ${getStatusColor(status)}`
+            : "bg-gray-200 text-transparent"
+        } rounded-md hover:opacity-90 transition-opacity`}
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "."}
       </button>
       {isOpen && (
         <>
-          <div className="fixed inset-0" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+            }}
+          />
           <div className="absolute z-50 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 p-1">
             <div className="py-1 space-y-1">
               {statusOptions.map((option) => (
@@ -846,13 +852,12 @@ const TaskScheduler = () => {
       id: `new-subtask-${Date.now()}`,
       subitem: "",
       owner: "",
-      status: "Not Started",
+      status: "", // Remove default "Not Started" status
       date: new Date().toLocaleDateString(),
     };
     setNewSubtask({ taskId, subtask: newSubtask });
     setExpanded((prev) => (prev.includes(taskId) ? prev : [...prev, taskId]));
 
-    // Focus on the new input field after a short delay
     setTimeout(() => {
       const newSubtaskInput = document.getElementById(
         `new-subtask-input-${taskId}`
@@ -1048,7 +1053,7 @@ const TaskScheduler = () => {
         id: `task-${Date.now()}`,
         name: newTaskInput.trim(),
         person: "",
-        status: "Not Started",
+        status: "", // Remove default "Not Started" status
         date: new Date().toLocaleDateString(),
         subitems: [],
       };
