@@ -5,6 +5,7 @@ import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 
+// Add new type definitions
 type ColumnType = "status" | "text" | "people" | "number" | "date";
 
 interface Column {
@@ -298,6 +299,13 @@ const TaskScheduler = () => {
       value: "person",
       width: 150,
       type: "people",
+    },
+    {
+      id: "status",
+      text: "Status",
+      value: "status",
+      width: 150,
+      type: "status",
     },
     { id: "date", text: "Date", value: "date", width: 100, type: "date" },
   ]);
@@ -1348,13 +1356,12 @@ const TaskScheduler = () => {
                             )}
                           </div>
                         ) : column.id === "status" ? (
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${getStatusColor(
-                              String(task[column.value] || "")
-                            )}`}
-                          >
-                            {String(task[column.value] || "")}
-                          </span>
+                          <StatusCell
+                            status={String(task[column.value] || "")}
+                            onStatusChange={(newStatus) =>
+                              handleStatusChange(task.id, newStatus)
+                            }
+                          />
                         ) : (
                           renderCell(
                             column,
