@@ -210,77 +210,66 @@ const EditableText: React.FC<{
 
 // Add these new components and functions before the TaskScheduler component
 
-const StatusDropdown = ({ status, onSelect, onClose }) => {
+// The StatusCell component is the key to fixing the issue
+const StatusCell = ({
+  status,
+  columnId, // Add columnId prop
+  onStatusChange,
+  taskId,
+  subtaskId = null,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   const statusOptions = [
     { label: "Done", value: "done", color: "bg-emerald-500" },
     { label: "Working", value: "working", color: "bg-yellow-500" },
     { label: "Stuck", value: "stuck", color: "bg-red-500" },
+    { label: "Not Started", value: "not-started", color: "bg-gray-300" },
   ];
 
-  return (
-    <div className="absolute z-50 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-      <div
-        className="py-1"
-        role="menu"
-        aria-orientation="vertical"
-        aria-labelledby="options-menu"
-      >
-        {statusOptions.map((option) => (
-          <button
-            key={option.value}
-            className={`${option.color} text-white group flex rounded-md items-center w-full px-2 py-2 text-sm`}
-            onClick={() => {
-              onSelect(option.value);
-              onClose();
-            }}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const StatusCell = ({ status, onStatusChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(status);
-
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "done":
-        return "bg-emerald-500";
-      case "working":
-        return "bg-yellow-500";
-      case "stuck":
-        return "bg-red-500";
-      default:
-        return "bg-gray-200";
-    }
+    const option = statusOptions.find(
+      (opt) => opt.value === status.toLowerCase()
+    );
+    return option?.color || "bg-gray-300";
   };
 
   const handleStatusChange = (newStatus) => {
-    setCurrentStatus(newStatus);
-    onStatusChange(newStatus);
+    // Pass the columnId to identify which status column is being updated
+    onStatusChange(taskId, columnId, newStatus, subtaskId);
     setIsOpen(false);
   };
 
   return (
-    <div className="relative -m-2">
+    <div className="relative">
       <button
-        className={`w-full h-full px-4 py-2 text-xs text-white ${getStatusColor(
-          currentStatus
-        )}`}
-        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-full px-3 py-1.5 text-sm text-white ${getStatusColor(
+          status
+        )} rounded-md hover:opacity-90 transition-opacity`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
       >
-        {currentStatus}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </button>
       {isOpen && (
-        <StatusDropdown
-          status={currentStatus}
-          onSelect={handleStatusChange}
-          onClose={() => setIsOpen(false)}
-        />
+        <>
+          <div className="fixed inset-0" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-50 mt-1 w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 p-1">
+            <div className="py-1 space-y-1">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  className={`${option.color} text-white group flex rounded-md items-center w-full px-3 py-2 text-sm hover:opacity-90 transition-opacity`}
+                  onClick={() => handleStatusChange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -433,6 +422,50 @@ const TaskScheduler = () => {
     taskId: string;
     subtask: SubTask;
   } | null>(null);
+
+  // Add this at the component level (inside TaskScheduler but before other state declarations)
+  const [openStatusDropdown, setOpenStatusDropdown] = useState<{
+    taskId: string;
+    subtaskId?: string | null;
+  } | null>(null);
+
+  // Modify the StatusCell component to use the global state
+  // Modify the TaskScheduler component
+
+  // Update the handleStatusChange function in the main TaskScheduler component
+  const handleStatusChange = (
+    taskId,
+    columnId,
+    newStatus,
+    subtaskId = null
+  ) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          if (subtaskId) {
+            // Update subtask status for the specific column
+            return {
+              ...task,
+              subitems: task.subitems.map((subtask) =>
+                subtask.id === subtaskId
+                  ? {
+                      ...subtask,
+                      [columnId]: newStatus, // Use columnId instead of generic 'status'
+                    }
+                  : subtask
+              ),
+            };
+          }
+          // Update task status for the specific column
+          return {
+            ...task,
+            [columnId]: newStatus, // Use columnId instead of generic 'status'
+          };
+        }
+        return task;
+      })
+    );
+  };
 
   const handleColumnMouseEnter = (columnId: string) => {
     setHoveringColumn(columnId);
@@ -1031,27 +1064,6 @@ const TaskScheduler = () => {
     setNewTaskInput(null);
   };
 
-  const handleStatusChange = (taskId, newStatus, subtaskId = null) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id === taskId) {
-          if (subtaskId) {
-            return {
-              ...task,
-              subitems: task.subitems.map((subtask) =>
-                subtask.id === subtaskId
-                  ? { ...subtask, status: newStatus }
-                  : subtask
-              ),
-            };
-          }
-          return { ...task, status: newStatus };
-        }
-        return task;
-      })
-    );
-  };
-
   const handleCellSave = (
     taskId: string,
     columnId: string,
@@ -1097,9 +1109,10 @@ const TaskScheduler = () => {
         return (
           <StatusCell
             status={value}
-            onStatusChange={(newStatus) =>
-              handleStatusChange(taskId, newStatus, subtaskId)
-            }
+            columnId={column.value} // Pass the column value as identifier
+            onStatusChange={handleStatusChange}
+            taskId={taskId}
+            subtaskId={subtaskId}
           />
         );
 
@@ -1175,7 +1188,10 @@ const TaskScheduler = () => {
 
   // Modify the table rows in the return statement
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div
+      className="min-h-screen bg-gray-50 p-8"
+      onClick={() => setOpenStatusDropdown(null)}
+    >
       {/* Top toolbar remains the same */}
       <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg mb-6 shadow-sm">
         <div className="flex gap-2">
@@ -1371,12 +1387,12 @@ const TaskScheduler = () => {
                               task.id
                             )}
                           </div>
-                        ) : column.id === "status" ? (
+                        ) : column.type === "status" ? (
                           <StatusCell
                             status={String(task[column.value] || "")}
-                            onStatusChange={(newStatus) =>
-                              handleStatusChange(task.id, newStatus)
-                            }
+                            columnId={column.value} // Pass the column value as identifier
+                            onStatusChange={handleStatusChange}
+                            taskId={task.id}
                           />
                         ) : (
                           renderCell(
