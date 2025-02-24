@@ -429,6 +429,11 @@ const TaskScheduler = () => {
 
   const [openDropdown, setOpenDropdown] = useState(null);
 
+  const [newSubtask, setNewSubtask] = useState<{
+    taskId: string;
+    subtask: SubTask;
+  } | null>(null);
+
   const handleColumnMouseEnter = (columnId: string) => {
     setHoveringColumn(columnId);
   };
@@ -805,43 +810,54 @@ const TaskScheduler = () => {
 
   const addNewSubtask = (taskId: string) => {
     const newSubtask: SubTask = {
-      id: `subtask-${Date.now()}`,
+      id: `new-subtask-${Date.now()}`,
       subitem: "",
       owner: "",
       status: "Not Started",
       date: new Date().toLocaleDateString(),
     };
-
-    subtaskColumns.forEach((column) => {
-      if (!["subitem", "owner", "status", "date"].includes(column.value)) {
-        newSubtask[column.value] = "";
-      }
-    });
-
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => {
-        if (task.id === taskId) {
-          return { ...task, subitems: [...task.subitems, newSubtask] };
-        }
-        return task;
-      })
-    );
-
+    setNewSubtask({ taskId, subtask: newSubtask });
     setExpanded((prev) => (prev.includes(taskId) ? prev : [...prev, taskId]));
-    setEditingCell({
-      taskId,
-      columnId: "subitem",
-      subtaskId: newSubtask.id,
-      value: "",
-    });
 
-    // Scroll to the new subtask
+    // Focus on the new input field after a short delay
     setTimeout(() => {
-      const newSubtaskRow = document.getElementById(`subtask-${newSubtask.id}`);
-      if (newSubtaskRow) {
-        newSubtaskRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const newSubtaskInput = document.getElementById(
+        `new-subtask-input-${taskId}`
+      );
+      if (newSubtaskInput) {
+        newSubtaskInput.focus();
       }
     }, 0);
+  };
+
+  const handleNewSubtaskChange = (columnId: string, value: string) => {
+    if (newSubtask) {
+      setNewSubtask({
+        ...newSubtask,
+        subtask: {
+          ...newSubtask.subtask,
+          [subtaskColumns.find((col) => col.id === columnId)?.value || ""]:
+            value,
+        },
+      });
+    }
+  };
+
+  const saveNewSubtask = () => {
+    if (newSubtask && newSubtask.subtask.subitem.trim() !== "") {
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.id === newSubtask.taskId) {
+            return {
+              ...task,
+              subitems: [...task.subitems, newSubtask.subtask],
+            };
+          }
+          return task;
+        })
+      );
+    }
+    setNewSubtask(null);
   };
 
   const addNewGroup = () => {
@@ -1594,11 +1610,10 @@ const TaskScheduler = () => {
                                     </td>
                                   </tr>
                                 ))}
-                                {editingCell &&
-                                  editingCell.taskId === task.id &&
-                                  !editingCell.subtaskId && (
-                                    <tr>
-                                      <td className="w-[40px] px-4 py-2 border border-gray-200">
+                                {newSubtask &&
+                                  newSubtask.taskId === task.id && (
+                                    <tr className="bg-white hover:bg-gray-100/50">
+                                      <td className="px-4 py-2 border border-gray-200">
                                         <input
                                           type="checkbox"
                                           disabled
@@ -1609,58 +1624,54 @@ const TaskScheduler = () => {
                                         <td
                                           key={column.id}
                                           className="px-4 py-2 border border-gray-200"
-                                          style={{ width: column.width }}
+                                          style={{
+                                            width: column.width,
+                                            minWidth: column.width,
+                                            maxWidth: column.width,
+                                          }}
                                         >
                                           {column.value === "subitem" ? (
                                             <input
-                                              autoFocus
-                                              value={editingCell.value}
+                                              id={`new-subtask-input-${task.id}`}
+                                              type="text"
+                                              value={newSubtask.subtask.subitem}
                                               onChange={(e) =>
-                                                setEditingCell({
-                                                  ...editingCell,
-                                                  value: e.target.value,
-                                                })
+                                                handleNewSubtaskChange(
+                                                  column.id,
+                                                  e.target.value
+                                                )
                                               }
-                                              onBlur={() => {
-                                                if (
-                                                  editingCell.value.trim() !==
-                                                  ""
-                                                ) {
-                                                  handleCellSave(
-                                                    task.id,
-                                                    "subitem",
-                                                    editingCell.value
-                                                  );
-                                                }
-                                                setEditingCell(null);
-                                              }}
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") {
-                                                  if (
-                                                    editingCell.value.trim() !==
-                                                    ""
-                                                  ) {
-                                                    handleCellSave(
-                                                      task.id,
-                                                      "subitem",
-                                                      editingCell.value
-                                                    );
-                                                  }
-                                                  setEditingCell(null);
+                                                  saveNewSubtask();
                                                 }
                                               }}
                                               className="w-full px-2 py-1 border-none focus:ring-2 focus:ring-blue-500"
                                               placeholder="Enter new subtask name"
                                             />
-                                          ) : null}
+                                          ) : (
+                                            renderCell(
+                                              column,
+                                              newSubtask.subtask[
+                                                column.value
+                                              ] || "",
+                                              (newValue) =>
+                                                handleNewSubtaskChange(
+                                                  column.id,
+                                                  newValue
+                                                ),
+                                              task.id,
+                                              newSubtask.subtask.id
+                                            )
+                                          )}
                                         </td>
                                       ))}
-                                      <td className="w-[40px] px-4 py-2 border border-gray-200"></td>
+                                      <td className="px-4 py-2 border border-gray-200"></td>
                                     </tr>
                                   )}
                                 <tr>
                                   <td
-                                    colSpan={subtaskColumns.length + 1}
+                                    colSpan={subtaskColumns.length + 2}
                                     className="border border-gray-200"
                                   >
                                     <button
